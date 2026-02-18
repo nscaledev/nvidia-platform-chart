@@ -74,19 +74,16 @@ data:
     exit 0
   iommu_passthrough.sh: |
     #!/bin/bash
-    # Ensure IOMMU is in passthrough mode (iommu=pt kernel param).
-    # If missing, patches grub.cfg and reboots the node.
+    # Verify IOMMU is in passthrough mode (iommu=pt kernel param).
+    # This must be set in the node image; the script will fail if it is missing.
 
     if grep -q 'iommu=pt' /proc/cmdline; then
       echo "iommu=pt already set."
       exit 0
     fi
 
-    echo "iommu=pt NOT found in kernel cmdline. Patching grub.cfg..."
-    sed -i '/linux.*vmlinuz.*root=UUID/s|$| iommu=pt|' /boot/grub/grub.cfg
-    echo "Grub patched. Rebooting node to apply iommu=pt..."
-    reboot
-    sleep 60
+    echo "ERROR: iommu=pt is NOT set in kernel cmdline. This must be configured in the node image."
+    exit 1
   entrypoint.sh: |
     #!/bin/bash
     set -e
