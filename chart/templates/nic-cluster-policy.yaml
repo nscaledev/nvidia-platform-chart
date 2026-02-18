@@ -1,0 +1,20 @@
+{{- if and .Values.nicClusterPolicy.enabled (index .Values "network-operator" "enabled") }}
+apiVersion: mellanox.com/v1alpha1
+kind: NicClusterPolicy
+metadata:
+  name: nic-cluster-policy
+  labels:
+    {{- include "nvidia-platform.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.nicClusterPolicy.ofedDriver.enabled }}
+  ofedDriver: {{ omit .Values.nicClusterPolicy.ofedDriver "enabled" | toYaml | nindent 4 }}
+  {{- end }}
+  {{- if .Values.nicClusterPolicy.rdmaSharedDevicePlugin.enabled }}
+  rdmaSharedDevicePlugin:
+    image: {{ .Values.nicClusterPolicy.rdmaSharedDevicePlugin.image }}
+    repository: {{ .Values.nicClusterPolicy.rdmaSharedDevicePlugin.repository }}
+    version: {{ .Values.nicClusterPolicy.rdmaSharedDevicePlugin.version }}
+    config: |
+      {{- dict "configList" .Values.nicClusterPolicy.rdmaSharedDevicePlugin.configs | toPrettyJson | nindent 6 }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,12 @@
+dependencies:
+- name: node-feature-discovery
+  repository: oci://registry.k8s.io/nfd/charts
+  version: 0.18.3
+- name: gpu-operator
+  repository: https://helm.ngc.nvidia.com/nvidia
+  version: v25.10.1
+- name: network-operator
+  repository: https://helm.ngc.nvidia.com/nvidia
+  version: 25.10.0
+digest: sha256:12d379a6bd7fd8991998d5eb248f6c41259ad55db9c3c1b655290608cb81ae89
+generated: "2026-02-18T10:20:12.421852Z"

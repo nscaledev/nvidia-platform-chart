@@ -1,0 +1,18 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+  - repo: https://github.com/norwoodj/helm-docs.git
+    rev: v1.14.2
+    hooks:
+      - id: helm-docs
+  - repo: local
+    hooks:
+      - id: helm-lint
+        name: Helm Lint
+        entry: bash -c 'helm dependency build chart && helm lint chart'
+        language: system
+        files: ^chart/
+        pass_filenames: false

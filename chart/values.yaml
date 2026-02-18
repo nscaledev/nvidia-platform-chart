@@ -1,0 +1,163 @@
+# Node Feature Discovery subchart values
+node-feature-discovery:
+  # -- Enable Node Feature Discovery subchart
+  enabled: true
+  # -- Priority class for NFD pods
+  priorityClassName: system-cluster-critical
+  gc:
+    # -- Enable NFD garbage collector
+    enabled: true
+    # -- Number of garbage collector replicas
+    replicaCount: 1
+  master:
+    config:
+      # -- Extra label namespaces for NFD master
+      extraLabelNs:
+        - nvidia.com
+  worker:
+    # -- Tolerations for NFD worker pods
+    tolerations:
+      - operator: Exists
+    config:
+      sources:
+        pci:
+          # -- PCI device classes to detect
+          deviceClassWhitelist:
+            - "02"    # Network controllers (e.g. ethernet, IB)
+            - "03"    # Display controllers (e.g. GPU)
+            - "0b40"  # Co-processors
+            - "12"    # Processing accelerators (e.g. specialised AI inference chips)
+          # -- PCI fields to use as labels
+          deviceLabelFields:
+            - vendor
+
+# GPU Operator subchart values
+gpu-operator:
+  # -- Enable GPU Operator subchart
+  enabled: true
+  nfd:
+    # -- Deploy NFD from GPU Operator (disabled, using standalone)
+    enabled: false
+    # -- Enable GPU Operator NodeFeatureRules
+    nodefeaturerules: true
+  cdi:
+    # -- Enable Container Device Interface
+    enabled: true
+  driver:
+    # -- Enable GPU driver
+    enabled: true
+    upgradePolicy:
+      # -- Enable automatic driver upgrades
+      autoUpgrade: true
+      # -- Max nodes upgraded in parallel
+      maxParallelUpgrades: 1
+      drain:
+        # -- Drain nodes before driver upgrade
+        enable: true
+        # -- Force drain (evict even without controllers)
+        force: true
+        # -- Label selector for pods to drain (empty = all)
+        podSelector: ""
+        # -- Drain timeout in seconds
+        timeoutSeconds: 300
+        # -- Delete emptyDir volumes on drain
+        deleteEmptyDir: true
+  daemonsets:
+    # -- Tolerations for GPU Operator DaemonSets
+    tolerations:
+      - operator: Exists
+
+# Network Operator subchart values
+network-operator:
+  # -- Enable Network Operator subchart
+  enabled: true
+  nfd:
+    # -- Deploy NFD from Network Operator (disabled, using standalone)
+    enabled: false
+
+# GPU node config DaemonSet (IOMMU passthrough + ACS disable)
+gpuNodeConfig:
+  # -- Enable GPU node config DaemonSet
+  enabled: true
+  # -- Container image for the node config DaemonSet
+  image: ubuntu:24.04
+  # -- Max unavailable nodes during rolling update
+  maxUnavailable: 1
+  # -- Node selector for GPU config pods
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+  # -- Tolerations for GPU config pods
+  tolerations:
+    - operator: Exists
+
+# NIC Cluster Policy (RDMA shared device plugin)
+nicClusterPolicy:
+  # -- Enable NIC Cluster Policy
+  enabled: true
+  ofedDriver:
+    # -- Enable OFED driver
+    enabled: true
+    # -- OFED driver image name
+    image: doca-driver
+    # -- Image repository
+    repository: nvcr.io/nvidia/mellanox
+    # -- Image version tag
+    version: doca3.2.0-25.10-1.2.8.0-2
+    # -- Force use of precompiled driver
+    forcePrecompiled: false
+    # -- Termination grace period in seconds
+    terminationGracePeriodSeconds: 300
+    # -- Environment variables for the driver pod
+    env:
+      - name: UNLOAD_STORAGE_MODULES
+        value: "true"
+    # -- Startup probe for the driver pods
+    startupProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 20
+    # -- Liveness probe for the driver pods
+    livenessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    # -- Readiness probe for the driver pods
+    readinessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 30
+    upgradePolicy:
+      # -- Enable automatic driver upgrades
+      autoUpgrade: true
+      # -- Max nodes upgraded in parallel
+      maxParallelUpgrades: 1
+      # -- Enable safe driver loading
+      safeLoad: false
+      drain:
+        # -- Drain nodes before driver upgrade
+        enable: true
+        # -- Force drain (evict even without controllers)
+        force: true
+        # -- Label selector for pods to drain (empty = all)
+        podSelector: ""
+        # -- Drain timeout in seconds
+        timeoutSeconds: 300
+        # -- Delete emptyDir volumes on drain
+        deleteEmptyDir: true
+  rdmaSharedDevicePlugin:
+    # -- Enable RDMA shared device plugin
+    enabled: true
+    # -- RDMA shared device plugin image name
+    image: k8s-rdma-shared-dev-plugin
+    # -- Image repository
+    repository: nvcr.io/nvidia/mellanox
+    # -- Image version tag
+    version: network-operator-v25.10.0
+    # -- RDMA shared device plugin config list
+    configs:
+      - resourcePrefix: nscale.com
+        resourceName: rdmashare
+        rdmaHcaMax: 8
+        selectors:
+          vendors:
+            - "15b3"  # PCI vendor ID for Mellanox
+          deviceIDs:
+            - "1021"  # PCI device ID for ConnectX-7
+            - "1023"  # PCI device ID for ConnectX-8
