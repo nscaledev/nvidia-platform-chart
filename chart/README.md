@@ -63,6 +63,7 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
 | gpuNodeConfig.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for GPU config pods |
 | network-operator.enabled | bool | `true` | Enable Network Operator subchart |
 | network-operator.nfd.enabled | bool | `false` | Deploy NFD from Network Operator (disabled, using standalone) |
+| network-operator.operator.fullnameOverride | string | `"network-operator"` | Override the fullname to avoid including the release name |
 | nicClusterPolicy.enabled | bool | `true` | Enable NIC Cluster Policy |
 | nicClusterPolicy.ofedDriver.enabled | bool | `true` | Enable OFED driver |
 | nicClusterPolicy.ofedDriver.env | list | `[{"name":"UNLOAD_STORAGE_MODULES","value":"true"}]` | Environment variables for the driver pod |
@@ -88,6 +89,7 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
 | nicClusterPolicy.rdmaSharedDevicePlugin.repository | string | `"nvcr.io/nvidia/mellanox"` | Image repository |
 | nicClusterPolicy.rdmaSharedDevicePlugin.version | string | `"network-operator-v25.10.0"` | Image version tag |
 | node-feature-discovery.enabled | bool | `true` | Enable Node Feature Discovery subchart |
+| node-feature-discovery.fullnameOverride | string | `"node-feature-discovery"` | Override the fullname to avoid including the release name |
 | node-feature-discovery.gc.enabled | bool | `true` | Enable NFD garbage collector |
 | node-feature-discovery.gc.replicaCount | int | `1` | Number of garbage collector replicas |
 | node-feature-discovery.master.config.extraLabelNs | list | `["nvidia.com"]` | Extra label namespaces for NFD master |
