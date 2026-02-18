@@ -2,6 +2,8 @@
 node-feature-discovery:
   # -- Enable Node Feature Discovery subchart
   enabled: true
+  # -- Override the fullname to avoid including the release name
+  fullnameOverride: node-feature-discovery
   # -- Priority class for NFD pods
   priorityClassName: system-cluster-critical
   gc:
@@ -74,6 +76,9 @@ network-operator:
   nfd:
     # -- Deploy NFD from Network Operator (disabled, using standalone)
     enabled: false
+  operator:
+    # -- Override the fullname to avoid including the release name
+    fullnameOverride: network-operator
 
 # GPU node config DaemonSet (IOMMU passthrough + ACS disable)
 gpuNodeConfig:
