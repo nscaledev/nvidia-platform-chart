@@ -1,0 +1,22 @@
+apiVersion: v2
+name: nvidia-platform
+description: Umbrella chart for deploying NVIDIA GPU/network infrastructure and node-level tuning
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: node-feature-discovery
+    version: 0.18.3
+    repository: oci://registry.k8s.io/nfd/charts
+    condition: node-feature-discovery.enabled
+
+  - name: gpu-operator
+    version: v25.10.1
+    repository: https://helm.ngc.nvidia.com/nvidia
+    condition: gpu-operator.enabled
+
+  - name: network-operator
+    version: 25.10.0
+    repository: https://helm.ngc.nvidia.com/nvidia
+    condition: network-operator.enabled

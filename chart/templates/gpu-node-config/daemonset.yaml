@@ -1,0 +1,49 @@
+{{- if .Values.gpuNodeConfig.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gpu-node-config
+  labels:
+    {{- include "nvidia-platform.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: gpu-node-config
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ .Values.gpuNodeConfig.maxUnavailable }}
+  template:
+    metadata:
+      labels:
+        app: gpu-node-config
+    spec:
+      nodeSelector:
+        {{- toYaml .Values.gpuNodeConfig.nodeSelector | nindent 8 }}
+      hostPID: true
+      containers:
+        - name: gpu-node-config
+          image: {{ .Values.gpuNodeConfig.image }}
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              cp /scripts/*.sh /host/tmp/
+              chmod +x /host/tmp/entrypoint.sh /host/tmp/iommu_passthrough.sh /host/tmp/acs_reconfigure.sh
+              chroot /host /tmp/entrypoint.sh
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host
+              mountPath: /host
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: host
+          hostPath:
+            path: /
+        - name: scripts
+          configMap:
+            name: gpu-node-config-scripts
+      tolerations:
+        {{- toYaml .Values.gpuNodeConfig.tolerations | nindent 8 }}
+{{- end }}

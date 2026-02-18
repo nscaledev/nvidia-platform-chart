@@ -1,0 +1,42 @@
+{{ template "chart.header" . }}
+
+{{ template "chart.description" . }}
+
+## What This Chart Installs
+
+| Component | Description |
+|-----------|-------------|
+| [Node Feature Discovery](https://github.com/kubernetes-sigs/node-feature-discovery) | Detects hardware features and labels nodes (GPU, NIC, PCI devices) |
+| [GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/) | Manages NVIDIA GPU drivers, device plugin, and related components |
+| [Network Operator](https://docs.nvidia.com/networking/display/cokan10/network+operator) | Manages NVIDIA networking components (RDMA, SR-IOV, etc.) |
+| GPU Node Config | DaemonSet that configures IOMMU passthrough and disables ACS on PCI switches |
+| NIC Cluster Policy | Configures RDMA shared device plugin for ConnectX NICs |
+
+## Prerequisites
+
+- Kubernetes 1.27+
+- Helm 3.12+
+- Nodes with NVIDIA GPUs and/or Mellanox ConnectX NICs
+
+## Installation
+
+```bash
+# Add the NVIDIA Helm repository
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+
+# Build subchart dependencies
+helm dependency build ./chart
+
+# Install
+helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace
+```
+
+## Requirements
+
+{{ template "chart.requirementsTable" . }}
+
+## Values
+
+{{ template "chart.valuesTable" . }}
+
+{{ template "helm-docs.versionFooter" . }}
