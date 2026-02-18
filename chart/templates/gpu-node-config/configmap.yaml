@@ -30,6 +30,11 @@ data:
         exit 1
     fi
 
+    if ! command -v lspci >/dev/null 2>&1 || ! command -v setpci >/dev/null 2>&1; then
+        echo "ERROR: lspci/setpci not found. Install pciutils."
+        exit 1
+    fi
+
     case $DISABLE_ACS in
         1)
             action_prefix="dis"

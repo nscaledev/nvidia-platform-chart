@@ -1,4 +1,4 @@
-{{- if .Values.nicClusterPolicy.enabled }}
+{{- if and .Values.nicClusterPolicy.enabled (index .Values "network-operator" "enabled") }}
 apiVersion: mellanox.com/v1alpha1
 kind: NicClusterPolicy
 metadata:
