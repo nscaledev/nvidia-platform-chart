@@ -8,3 +8,11 @@ repos:
     rev: v1.14.2
     hooks:
       - id: helm-docs
+  - repo: local
+    hooks:
+      - id: helm-lint
+        name: Helm Lint
+        entry: bash -c 'helm dependency build chart && helm lint chart'
+        language: system
+        files: ^chart/
+        pass_filenames: false
