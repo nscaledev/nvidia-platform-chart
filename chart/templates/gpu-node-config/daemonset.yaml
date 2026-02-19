@@ -28,7 +28,7 @@ spec:
           args:
             - |
               cp /scripts/*.sh /host/tmp/
-              chmod +x /host/tmp/entrypoint.sh /host/tmp/iommu_passthrough.sh /host/tmp/acs_reconfigure.sh
+              chmod +x /host/tmp/entrypoint.sh /host/tmp/iommu_passthrough.sh /host/tmp/acs_disable.sh
               chroot /host /tmp/entrypoint.sh
           securityContext:
             privileged: true

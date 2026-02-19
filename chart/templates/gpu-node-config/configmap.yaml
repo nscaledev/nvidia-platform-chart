@@ -6,75 +6,42 @@ metadata:
   labels:
     {{- include "nvidia-platform.labels" . | nindent 4 }}
 data:
-  acs_reconfigure.sh: |
+  acs_disable.sh: |
     #!/bin/bash
     # Copyright (c) 2020, NVIDIA Corporation. MIT License.
     # Modified by Nscale 2026
-    # Enable or Disable P2P specific ACS bits on every device that supports it
-
-    if [ -n "$INVOCATION_ID" ]; then
-        logger_flags=""
-    else
-        logger_flags="-s"
-    fi
-
-    DISABLE_ACS="${DISABLE_ACS:-1}"
-    DEBUG_ACS="${DEBUG_ACS:-0}"
-    ENABLE_CAP="${ENABLE_CAP:-0x5d}"
-    ENABLE_CHECK="${ENABLE_CHECK:-005d}"
-    PLATFORM=$(dmidecode --string system-product-name 2>/dev/null)
-    logger $logger_flags "PLATFORM=${PLATFORM}"
+    # Disable P2P specific ACS bits on every device that supports it
 
     if [ "$EUID" -ne 0 ]; then
-        echo "ERROR: $0 must be run as root"
+        echo "ERROR: $0 must be run as root" >&2
         exit 1
     fi
 
     if ! command -v lspci >/dev/null 2>&1 || ! command -v setpci >/dev/null 2>&1; then
-        echo "ERROR: lspci/setpci not found. Install pciutils."
+        echo "ERROR: lspci/setpci not found. Install pciutils." >&2
         exit 1
     fi
-
-    case $DISABLE_ACS in
-        1)
-            action_prefix="dis"
-            target_value="0000"
-            check_value="0000"
-        ;;
-        0)
-            action_prefix="en"
-            target_value="$ENABLE_CAP"
-            check_value="$ENABLE_CHECK"
-        ;;
-        *)
-            echo "DISABLE_ACS must be set to 0 or 1 it is currently '$DISABLE_ACS'"
-            exit 1
-        ;;
-    esac
 
     for BDF in $(lspci -d "*:*:*" | awk '{print $1}'); do
         output=$(setpci -v -s ${BDF} ECAP_ACS+0x6.w 2>&1)
         if [ $? -ne 0 ]; then
-            [[ $DEBUG_ACS == 1 ]] && logger $logger_flags -p user.debug "${BDF} does not support ACS, skipping"
-            unset OLD_VAL
+            echo "${BDF} does not support ACS, skipping"
             continue
-        else
-            OLD_VAL=$(echo "$output" | awk '{print $NF}')
-            [[ $DEBUG_ACS == 1 ]] && logger $logger_flags -p user.debug "${BDF} supports ACS and current value is $OLD_VAL"
         fi
-        logger $logger_flags -p user.notice "${action_prefix^}abling ACS on $(lspci -s ${BDF})"
-        setpci -v -s ${BDF} ECAP_ACS+0x6.w=$target_value > /dev/null 2>&1
+        OLD_VAL=$(echo "$output" | awk '{print $NF}')
+        echo "${BDF} supports ACS, current value is $OLD_VAL"
+        echo "Disabling ACS on $(lspci -s ${BDF})"
+        setpci -v -s ${BDF} ECAP_ACS+0x6.w=0000 > /dev/null 2>&1
         if [ $? -ne 0 ]; then
-            logger $logger_flags -p user.err "Error ${action_prefix}abling ACS on ${BDF}"
+            echo "Error disabling ACS on ${BDF}" >&2
             continue
         fi
         NEW_VAL=$(setpci -v -s ${BDF} ECAP_ACS+0x6.w | awk '{print $NF}')
-        if [ "${NEW_VAL}" != "$check_value" ]; then
-            logger $logger_flags -p user.notice "Failed to ${action_prefix}able ACS on ${BDF}. Value was ${NEW_VAL} and should be $check_value. The starting value was $OLD_VAL."
+        if [ "${NEW_VAL}" != "0000" ]; then
+            echo "Failed to disable ACS on ${BDF}. Value was ${NEW_VAL}, expected 0000. Starting value was $OLD_VAL."
             continue
-        else
-            logger $logger_flags -p user.notice "Successfully ${action_prefix}abled ACS on ${BDF}."
         fi
+        echo "Successfully disabled ACS on ${BDF}."
     done
     exit 0
   iommu_passthrough.sh: |
@@ -94,7 +61,7 @@ data:
     set -e
 
     /tmp/iommu_passthrough.sh
-    DISABLE_ACS=1 DEBUG_ACS=1 INVOCATION_ID=daemonset /tmp/acs_reconfigure.sh
+    /tmp/acs_disable.sh
 
     echo "gpu-node-config complete, sleeping."
     sleep infinity
