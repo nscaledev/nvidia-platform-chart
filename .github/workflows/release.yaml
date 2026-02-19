@@ -1,0 +1,56 @@
+---
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs['chart--release_created'] }}
+      version: ${{ steps.release.outputs['chart--version'] }}
+    steps:
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish-chart:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+
+      - name: Login to GHCR
+        run: >-
+          echo "${{ secrets.GITHUB_TOKEN }}" |
+          helm registry login ghcr.io
+          --username "${{ github.actor }}"
+          --password-stdin
+
+      - name: Add Helm repos
+        run: helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+
+      - name: Build dependencies
+        run: helm dependency build chart/
+
+      - name: Package and push chart
+        run: |
+          helm package chart/
+          helm push nvidia-platform-${{ needs.release-please.outputs.version }}.tgz \
+            oci://ghcr.io/nscaledev/charts
