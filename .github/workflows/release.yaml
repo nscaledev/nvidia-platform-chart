@@ -17,7 +17,7 @@ jobs:
       release_created: ${{ steps.release.outputs['chart--release_created'] }}
       version: ${{ steps.release.outputs['chart--version'] }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4
         id: release
         with:
           config-file: release-please-config.json
@@ -31,10 +31,10 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
 
       - name: Login to GHCR
         run: >-
