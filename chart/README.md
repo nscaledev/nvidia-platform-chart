@@ -46,6 +46,8 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
 | gpu-operator.cdi.enabled | bool | `true` | Enable Container Device Interface |
 | gpu-operator.daemonsets.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for GPU Operator DaemonSets |
 | gpu-operator.driver.enabled | bool | `true` | Enable GPU driver |
+| gpu-operator.driver.rdma.enabled | bool | `false` | Enable GPUDirect RDMA support in the GPU driver |
+| gpu-operator.driver.rdma.useHostMofed | bool | `false` | Use MOFED drivers pre-installed on the host |
 | gpu-operator.driver.upgradePolicy.autoUpgrade | bool | `true` | Enable automatic driver upgrades |
 | gpu-operator.driver.upgradePolicy.drain.deleteEmptyDir | bool | `true` | Delete emptyDir volumes on drain |
 | gpu-operator.driver.upgradePolicy.drain.enable | bool | `true` | Drain nodes before driver upgrade |

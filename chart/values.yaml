@@ -48,6 +48,11 @@ gpu-operator:
   driver:
     # -- Enable GPU driver
     enabled: true
+    rdma:
+      # -- Enable GPUDirect RDMA support in the GPU driver
+      enabled: false
+      # -- Use MOFED drivers pre-installed on the host
+      useHostMofed: false
     upgradePolicy:
       # -- Enable automatic driver upgrades
       autoUpgrade: true
