@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/nscaledev/nvidia-platform-chart/compare/nvidia-platform-0.1.1...nvidia-platform-0.1.2) (2026-08-03)
+
+
+### Bug Fixes
+
+* **chart:** expose NVIDIA RDMA controls ([#9](https://github.com/nscaledev/nvidia-platform-chart/issues/9)) ([6d7936f](https://github.com/nscaledev/nvidia-platform-chart/commit/6d7936f399b07588304feef030ad63b71a405ecd))
+
 ## [0.1.1](https://github.com/nscaledev/nvidia-platform-chart/compare/nvidia-platform-v0.1.0...nvidia-platform-0.1.1) (2026-02-19)
 
 
