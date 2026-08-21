@@ -165,7 +165,7 @@ nicClusterPolicy:
     # -- Image repository
     repository: nvcr.io/nvidia/mellanox
     # -- Image version tag
-    version: network-operator-v25.10.0
+    version: network-operator-v26.4.1
     # -- RDMA shared device plugin config list
     configs:
       - resourcePrefix: nscale.com

@@ -36,7 +36,7 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
 | Repository | Name | Version |
 |------------|------|---------|
 | https://helm.ngc.nvidia.com/nvidia | gpu-operator | v26.3.3 |
-| https://helm.ngc.nvidia.com/nvidia | network-operator | 25.10.0 |
+| https://helm.ngc.nvidia.com/nvidia | network-operator | 26.4.1 |
 | oci://registry.k8s.io/nfd/charts | node-feature-discovery | 0.18.3 |
 
 ## Values
@@ -91,7 +91,7 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
 | nicClusterPolicy.rdmaSharedDevicePlugin.enabled | bool | `true` | Enable RDMA shared device plugin |
 | nicClusterPolicy.rdmaSharedDevicePlugin.image | string | `"k8s-rdma-shared-dev-plugin"` | RDMA shared device plugin image name |
 | nicClusterPolicy.rdmaSharedDevicePlugin.repository | string | `"nvcr.io/nvidia/mellanox"` | Image repository |
-| nicClusterPolicy.rdmaSharedDevicePlugin.version | string | `"network-operator-v25.10.0"` | Image version tag |
+| nicClusterPolicy.rdmaSharedDevicePlugin.version | string | `"network-operator-v26.4.1"` | Image version tag |
 | node-feature-discovery.enabled | bool | `true` | Enable Node Feature Discovery subchart |
 | node-feature-discovery.fullnameOverride | string | `"node-feature-discovery"` | Override the fullname to avoid including the release name |
 | node-feature-discovery.gc.enabled | bool | `true` | Enable NFD garbage collector |
