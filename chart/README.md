@@ -35,7 +35,7 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://helm.ngc.nvidia.com/nvidia | gpu-operator | v25.10.1 |
+| https://helm.ngc.nvidia.com/nvidia | gpu-operator | v26.3.3 |
 | https://helm.ngc.nvidia.com/nvidia | network-operator | 25.10.0 |
 | oci://registry.k8s.io/nfd/charts | node-feature-discovery | 0.18.3 |
 
@@ -43,6 +43,8 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| gpu-operator.ccManager.defaultMode | string | `"off"` | Default CC mode applied to compatible GPUs (on/off/devtools) |
+| gpu-operator.ccManager.enabled | bool | `false` | Deploy the Confidential Computing manager. Pinned to false: the subchart flipped this default to true in v26.3.x without a release note. |
 | gpu-operator.cdi.enabled | bool | `true` | Enable Container Device Interface |
 | gpu-operator.daemonsets.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for GPU Operator DaemonSets |
 | gpu-operator.driver.enabled | bool | `true` | Enable GPU driver |
