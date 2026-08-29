@@ -8,7 +8,7 @@ node-feature-discovery:
   priorityClassName: system-cluster-critical
   gc:
     # -- Enable NFD garbage collector
-    enabled: true
+    enable: true
     # -- Number of garbage collector replicas
     replicaCount: 1
   master:
@@ -112,7 +112,7 @@ nicClusterPolicy:
     # -- Image repository
     repository: nvcr.io/nvidia/mellanox
     # -- Image version tag
-    version: doca3.2.0-25.10-1.2.8.0-2
+    version: doca3.5.0-26.07-0.7.7.0-0
     # -- Force use of precompiled driver
     forcePrecompiled: false
     # -- Termination grace period in seconds
@@ -159,7 +159,7 @@ nicClusterPolicy:
     # -- Image repository
     repository: nvcr.io/nvidia/mellanox
     # -- Image version tag
-    version: network-operator-v25.10.0
+    version: network-operator-v26.7.0
     # -- RDMA shared device plugin config list
     configs:
       - resourcePrefix: nscale.com

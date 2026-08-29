@@ -8,16 +8,16 @@ appVersion: "1.0.0"
 
 dependencies:
   - name: node-feature-discovery
-    version: 0.18.3
+    version: 0.19.0
     repository: oci://registry.k8s.io/nfd/charts
     condition: node-feature-discovery.enabled
 
   - name: gpu-operator
-    version: v25.10.1
+    version: v26.7.0
     repository: https://helm.ngc.nvidia.com/nvidia
     condition: gpu-operator.enabled
 
   - name: network-operator
-    version: 25.10.0
+    version: 26.7.0
     repository: https://helm.ngc.nvidia.com/nvidia
     condition: network-operator.enabled
