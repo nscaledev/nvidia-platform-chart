@@ -112,7 +112,7 @@ nicClusterPolicy:
     # -- Image repository
     repository: nvcr.io/nvidia/mellanox
     # -- Image version tag
-    version: doca3.5.0-26.07-0.7.7.0-0
+    version: doca3.4.1-26.04-1.1.0.0-1
     # -- Force use of precompiled driver
     forcePrecompiled: false
     # -- Termination grace period in seconds
@@ -159,7 +159,7 @@ nicClusterPolicy:
     # -- Image repository
     repository: nvcr.io/nvidia/mellanox
     # -- Image version tag
-    version: network-operator-v26.7.0
+    version: network-operator-v26.4.1
     # -- RDMA shared device plugin config list
     configs:
       - resourcePrefix: nscale.com
