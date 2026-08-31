@@ -166,6 +166,8 @@ nicClusterPolicy:
     repository: nvcr.io/nvidia/mellanox
     # -- Image version tag
     version: network-operator-v26.4.1
+    # -- Enable Container Device Interface (CDI) for the RDMA shared device plugin
+    useCdi: true
     # -- RDMA shared device plugin config list
     configs:
       - resourcePrefix: nscale.com

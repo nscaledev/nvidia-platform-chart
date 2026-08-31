@@ -17,6 +17,7 @@ Umbrella chart for deploying NVIDIA GPU/network infrastructure and node-level tu
 - Kubernetes 1.27+
 - Helm 3.12+
 - Nodes with NVIDIA GPUs and/or Mellanox ConnectX NICs
+- A CDI-capable container runtime (neither operator configures the container runtime for CDI itself)
 
 ## Installation
 
@@ -91,6 +92,7 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
 | nicClusterPolicy.rdmaSharedDevicePlugin.enabled | bool | `true` | Enable RDMA shared device plugin |
 | nicClusterPolicy.rdmaSharedDevicePlugin.image | string | `"k8s-rdma-shared-dev-plugin"` | RDMA shared device plugin image name |
 | nicClusterPolicy.rdmaSharedDevicePlugin.repository | string | `"nvcr.io/nvidia/mellanox"` | Image repository |
+| nicClusterPolicy.rdmaSharedDevicePlugin.useCdi | bool | `true` | Enable Container Device Interface (CDI) for the RDMA shared device plugin |
 | nicClusterPolicy.rdmaSharedDevicePlugin.version | string | `"network-operator-v26.4.1"` | Image version tag |
 | node-feature-discovery.enabled | bool | `true` | Enable Node Feature Discovery subchart |
 | node-feature-discovery.fullnameOverride | string | `"node-feature-discovery"` | Override the fullname to avoid including the release name |
