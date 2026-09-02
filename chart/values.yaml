@@ -75,16 +75,9 @@ gpu-operator:
         timeoutSeconds: 300
         # -- Delete emptyDir volumes on drain
         deleteEmptyDir: true
-    nvidiaDriverCRD:
-      # -- Enable driver installation via the NVIDIADriver CRD (required when gpuCluster.deployCR is true)
-      enabled: true
-  # -- Deploy the ClusterPolicy CR (mutually exclusive with gpuCluster.deployCR; disabled in favor of the
-  # GPUCluster/DRA-based stack, which replaces the classic device plugin and toolkit)
-  clusterPolicy:
-    deployCR: false
-  # -- Deploy the GPUCluster CR to enable the DRA driver for GPU and ComputeDomain resource allocation
-  gpuCluster:
-    deployCR: true
+  # By default this chart uses the classic ClusterPolicy stack (device plugin + toolkit) via the
+  # subchart's own defaults (clusterPolicy.deployCR=true, gpuCluster.deployCR=false). To switch to
+  # the GPUCluster/DRA-managed stack instead, see values-dra.yaml for example overrides.
   daemonsets:
     # -- Tolerations for GPU Operator DaemonSets
     tolerations:

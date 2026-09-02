@@ -1,0 +1,27 @@
+# Example overlay for enabling the GPUCluster/Dynamic Resource Allocation (DRA) stack instead of
+# the default classic ClusterPolicy stack (device plugin + toolkit).
+#
+# This file is not referenced anywhere automatically - pass it explicitly alongside the chart's
+# default values, e.g.:
+#
+#   helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace \
+#     -f chart/values-dra.yaml
+#
+# Requires Kubernetes 1.34.2+ for the resource.k8s.io DeviceClass API.
+#
+# Switching stacks on an existing installation deletes the unprotected ClusterPolicy/GPUCluster CR
+# (gpu-operator.operator.cleanupCRD defaults to false) and cascades into the driver/toolkit/
+# device-plugin stack being torn down and replaced on every GPU node. NVIDIA recommends performing
+# this switch on a fresh cluster rather than upgrading in place.
+
+gpu-operator:
+  driver:
+    nvidiaDriverCRD:
+      # Enable driver installation via the NVIDIADriver CRD (required when gpuCluster.deployCR is true)
+      enabled: true
+  # Deploy the ClusterPolicy CR (mutually exclusive with gpuCluster.deployCR)
+  clusterPolicy:
+    deployCR: false
+  # Deploy the GPUCluster CR to enable the DRA driver for GPU and ComputeDomain resource allocation
+  gpuCluster:
+    deployCR: true

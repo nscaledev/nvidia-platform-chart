@@ -7,14 +7,14 @@ Umbrella chart for deploying NVIDIA GPU/network infrastructure and node-level tu
 | Component | Description |
 |-----------|-------------|
 | [Node Feature Discovery](https://github.com/kubernetes-sigs/node-feature-discovery) | Detects hardware features and labels nodes (GPU, NIC, PCI devices) |
-| [GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/) | Manages NVIDIA GPU drivers and the DRA driver for GPU/ComputeDomain resource allocation |
+| [GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/) | Manages NVIDIA GPU drivers, device plugin, and related components |
 | [Network Operator](https://docs.nvidia.com/networking/display/cokan10/network+operator) | Manages NVIDIA networking components (RDMA, SR-IOV, etc.) |
 | GPU Node Config | DaemonSet that configures IOMMU passthrough and disables ACS on PCI switches |
 | NIC Cluster Policy | Configures RDMA shared device plugin for ConnectX NICs |
 
 ## Prerequisites
 
-- Kubernetes 1.34.2+ (Dynamic Resource Allocation / resource.k8s.io DeviceClass API)
+- Kubernetes 1.27+
 - Helm 3.12+
 - Nodes with NVIDIA GPUs and/or Mellanox ConnectX NICs
 - A CDI-capable container runtime (neither operator configures the container runtime for CDI itself)
@@ -32,20 +32,25 @@ helm dependency build ./chart
 helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace
 ```
 
-## Upgrading
+## Enabling Dynamic Resource Allocation (DRA)
 
-### Switching from the classic ClusterPolicy stack to GPUCluster/DRA
+By default this chart deploys the GPU Operator's classic `ClusterPolicy` stack (device plugin +
+toolkit). NVIDIA also ships a `GPUCluster` CR that manages the DRA driver for GPU and ComputeDomain
+resource allocation instead; see [values-dra.yaml](values-dra.yaml) for an example overlay that
+switches to it (requires Kubernetes 1.34.2+ for the `resource.k8s.io` DeviceClass API):
 
-This chart now deploys the GPU Operator's `GPUCluster` CR (DRA driver) instead of the classic
-`ClusterPolicy` CR (device plugin + toolkit). `gpu-operator.operator.cleanupCRD` defaults to `false`
-upstream, and the `ClusterPolicy` CR is only protected with a `helm.sh/resource-policy: keep` annotation
-when that value is `true`. On an existing installation upgrading across this change, `helm upgrade` will
-therefore delete the unprotected `ClusterPolicy` CR through normal Helm prune-on-diff behavior, which
-cascades into the GPU Operator tearing down and replacing the driver/toolkit/device-plugin stack on every
-GPU node: drivers reload, and standard `nvidia.com/gpu` resource requests stop scheduling until workloads
-are migrated to DRA `ResourceClaim`s. This converges rather than failing outright, but is materially
-disruptive to a running cluster — NVIDIA recommends performing this switch on a fresh cluster instead of
-upgrading in place.
+```bash
+helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace \
+  -f chart/values-dra.yaml
+```
+
+`gpu-operator.operator.cleanupCRD` defaults to `false` upstream, and the `ClusterPolicy`/`GPUCluster`
+CR is only protected with a `helm.sh/resource-policy: keep` annotation when that value is `true`. On
+an existing installation, switching stacks will therefore delete the unprotected CR through normal
+Helm prune-on-diff behavior, which cascades into the GPU Operator tearing down and replacing the
+driver/toolkit/device-plugin stack on every GPU node. This converges rather than failing outright,
+but is materially disruptive to a running cluster — NVIDIA recommends performing this switch on a
+fresh cluster instead of upgrading in place.
 
 ## Requirements
 
@@ -62,10 +67,8 @@ upgrading in place.
 | gpu-operator.ccManager.defaultMode | string | `"off"` | Default CC mode applied to compatible GPUs (on/off/devtools) |
 | gpu-operator.ccManager.enabled | bool | `false` | Deploy the Confidential Computing manager. Pinned to false: the subchart flipped this default to true in v26.3.x without a release note. |
 | gpu-operator.cdi.enabled | bool | `true` | Enable Container Device Interface |
-| gpu-operator.clusterPolicy | object | `{"deployCR":false}` | Deploy the ClusterPolicy CR (mutually exclusive with gpuCluster.deployCR; disabled in favor of the GPUCluster/DRA-based stack, which replaces the classic device plugin and toolkit) |
 | gpu-operator.daemonsets.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for GPU Operator DaemonSets |
 | gpu-operator.driver.enabled | bool | `true` | Enable GPU driver |
-| gpu-operator.driver.nvidiaDriverCRD.enabled | bool | `true` | Enable driver installation via the NVIDIADriver CRD (required when gpuCluster.deployCR is true) |
 | gpu-operator.driver.rdma.enabled | bool | `false` | Enable GPUDirect RDMA support in the GPU driver |
 | gpu-operator.driver.rdma.useHostMofed | bool | `false` | Use MOFED drivers pre-installed on the host |
 | gpu-operator.driver.upgradePolicy.autoUpgrade | bool | `true` | Enable automatic driver upgrades |
@@ -76,7 +79,6 @@ upgrading in place.
 | gpu-operator.driver.upgradePolicy.drain.timeoutSeconds | int | `300` | Drain timeout in seconds |
 | gpu-operator.driver.upgradePolicy.maxParallelUpgrades | int | `1` | Max nodes upgraded in parallel |
 | gpu-operator.enabled | bool | `true` | Enable GPU Operator subchart |
-| gpu-operator.gpuCluster | object | `{"deployCR":true}` | Deploy the GPUCluster CR to enable the DRA driver for GPU and ComputeDomain resource allocation |
 | gpu-operator.nfd.enabled | bool | `false` | Deploy NFD from GPU Operator (disabled, using standalone) |
 | gpu-operator.nfd.nodefeaturerules | bool | `true` | Enable GPU Operator NodeFeatureRules |
 | gpuNodeConfig.enabled | bool | `true` | Enable GPU node config DaemonSet |
