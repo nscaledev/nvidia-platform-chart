@@ -8,7 +8,7 @@ node-feature-discovery:
   priorityClassName: system-cluster-critical
   gc:
     # -- Enable NFD garbage collector
-    enabled: true
+    enable: true
     # -- Number of garbage collector replicas
     replicaCount: 1
   master:
@@ -45,6 +45,12 @@ gpu-operator:
   cdi:
     # -- Enable Container Device Interface
     enabled: true
+  ccManager:
+    # -- Deploy the Confidential Computing manager. Pinned to false: the
+    # subchart flipped this default to true in v26.3.x without a release note.
+    enabled: false
+    # -- Default CC mode applied to compatible GPUs (on/off/devtools)
+    defaultMode: "off"
   driver:
     # -- Enable GPU driver
     enabled: true
@@ -112,7 +118,7 @@ nicClusterPolicy:
     # -- Image repository
     repository: nvcr.io/nvidia/mellanox
     # -- Image version tag
-    version: doca3.2.0-25.10-1.2.8.0-2
+    version: doca3.4.1-26.04-1.1.0.0-1
     # -- Force use of precompiled driver
     forcePrecompiled: false
     # -- Termination grace period in seconds
@@ -159,7 +165,7 @@ nicClusterPolicy:
     # -- Image repository
     repository: nvcr.io/nvidia/mellanox
     # -- Image version tag
-    version: network-operator-v25.10.0
+    version: network-operator-v26.4.1
     # -- RDMA shared device plugin config list
     configs:
       - resourcePrefix: nscale.com

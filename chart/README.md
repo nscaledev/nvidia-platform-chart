@@ -35,14 +35,16 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://helm.ngc.nvidia.com/nvidia | gpu-operator | v25.10.1 |
-| https://helm.ngc.nvidia.com/nvidia | network-operator | 25.10.0 |
-| oci://registry.k8s.io/nfd/charts | node-feature-discovery | 0.18.3 |
+| https://helm.ngc.nvidia.com/nvidia | gpu-operator | v26.7.0 |
+| https://helm.ngc.nvidia.com/nvidia | network-operator | 26.4.1 |
+| oci://registry.k8s.io/nfd/charts | node-feature-discovery | 0.19.0 |
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| gpu-operator.ccManager.defaultMode | string | `"off"` | Default CC mode applied to compatible GPUs (on/off/devtools) |
+| gpu-operator.ccManager.enabled | bool | `false` | Deploy the Confidential Computing manager. Pinned to false: the subchart flipped this default to true in v26.3.x without a release note. |
 | gpu-operator.cdi.enabled | bool | `true` | Enable Container Device Interface |
 | gpu-operator.daemonsets.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for GPU Operator DaemonSets |
 | gpu-operator.driver.enabled | bool | `true` | Enable GPU driver |
@@ -84,15 +86,15 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
 | nicClusterPolicy.ofedDriver.upgradePolicy.drain.timeoutSeconds | int | `300` | Drain timeout in seconds |
 | nicClusterPolicy.ofedDriver.upgradePolicy.maxParallelUpgrades | int | `1` | Max nodes upgraded in parallel |
 | nicClusterPolicy.ofedDriver.upgradePolicy.safeLoad | bool | `false` | Enable safe driver loading |
-| nicClusterPolicy.ofedDriver.version | string | `"doca3.2.0-25.10-1.2.8.0-2"` | Image version tag |
+| nicClusterPolicy.ofedDriver.version | string | `"doca3.4.1-26.04-1.1.0.0-1"` | Image version tag |
 | nicClusterPolicy.rdmaSharedDevicePlugin.configs | list | `[{"rdmaHcaMax":8,"resourceName":"rdmashare","resourcePrefix":"nscale.com","selectors":{"deviceIDs":["1021","1023"],"vendors":["15b3"]}}]` | RDMA shared device plugin config list |
 | nicClusterPolicy.rdmaSharedDevicePlugin.enabled | bool | `true` | Enable RDMA shared device plugin |
 | nicClusterPolicy.rdmaSharedDevicePlugin.image | string | `"k8s-rdma-shared-dev-plugin"` | RDMA shared device plugin image name |
 | nicClusterPolicy.rdmaSharedDevicePlugin.repository | string | `"nvcr.io/nvidia/mellanox"` | Image repository |
-| nicClusterPolicy.rdmaSharedDevicePlugin.version | string | `"network-operator-v25.10.0"` | Image version tag |
+| nicClusterPolicy.rdmaSharedDevicePlugin.version | string | `"network-operator-v26.4.1"` | Image version tag |
 | node-feature-discovery.enabled | bool | `true` | Enable Node Feature Discovery subchart |
 | node-feature-discovery.fullnameOverride | string | `"node-feature-discovery"` | Override the fullname to avoid including the release name |
-| node-feature-discovery.gc.enabled | bool | `true` | Enable NFD garbage collector |
+| node-feature-discovery.gc.enable | bool | `true` | Enable NFD garbage collector |
 | node-feature-discovery.gc.replicaCount | int | `1` | Number of garbage collector replicas |
 | node-feature-discovery.master.config.extraLabelNs | list | `["nvidia.com"]` | Extra label namespaces for NFD master |
 | node-feature-discovery.priorityClassName | string | `"system-cluster-critical"` | Priority class for NFD pods |
