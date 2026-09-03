@@ -75,6 +75,9 @@ gpu-operator:
         timeoutSeconds: 300
         # -- Delete emptyDir volumes on drain
         deleteEmptyDir: true
+  # By default this chart uses the classic ClusterPolicy stack (device plugin + toolkit) via the
+  # subchart's own defaults (clusterPolicy.deployCR=true, gpuCluster.deployCR=false). To switch to
+  # the GPUCluster/DRA-managed stack instead, see values-dra.yaml for example overrides.
   daemonsets:
     # -- Tolerations for GPU Operator DaemonSets
     tolerations:
