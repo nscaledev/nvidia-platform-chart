@@ -32,6 +32,26 @@ helm dependency build ./chart
 helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace
 ```
 
+## Enabling Dynamic Resource Allocation (DRA)
+
+By default this chart deploys the GPU Operator's classic `ClusterPolicy` stack (device plugin +
+toolkit). NVIDIA also ships a `GPUCluster` CR that manages the DRA driver for GPU and ComputeDomain
+resource allocation instead; see [values-dra.yaml](values-dra.yaml) for an example overlay that
+switches to it (requires Kubernetes 1.34.2+ for the `resource.k8s.io` DeviceClass API):
+
+```bash
+helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace \
+  -f chart/values-dra.yaml
+```
+
+`gpu-operator.operator.cleanupCRD` defaults to `false` upstream, and the `ClusterPolicy`/`GPUCluster`
+CR is only protected with a `helm.sh/resource-policy: keep` annotation when that value is `true`. On
+an existing installation, switching stacks will therefore delete the unprotected CR through normal
+Helm prune-on-diff behavior, which cascades into the GPU Operator tearing down and replacing the
+driver/toolkit/device-plugin stack on every GPU node. This converges rather than failing outright,
+but is materially disruptive to a running cluster — NVIDIA recommends performing this switch on a
+fresh cluster instead of upgrading in place.
+
 ## Requirements
 
 {{ template "chart.requirementsTable" . }}

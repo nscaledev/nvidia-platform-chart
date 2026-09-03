@@ -17,6 +17,16 @@ data:
         exit 1
     fi
 
+    # Some node images configure ACS precisely per-bridge via a boot-time
+    # pci=config_acs= kernel quirk (e.g. NVIDIA Mission Control on GB200/GB300
+    # with ConnectX-8). If that's already present, it reflects a deliberate,
+    # more precise configuration than a blanket runtime disable can replicate -
+    # leave it alone rather than overriding it.
+    if grep -q 'config_acs' /proc/cmdline; then
+        echo "pci=config_acs already present in kernel cmdline, ACS is already configured for this node - taking no action."
+        exit 0
+    fi
+
     if ! command -v lspci >/dev/null 2>&1 || ! command -v setpci >/dev/null 2>&1; then
         echo "ERROR: lspci/setpci not found. Install pciutils." >&2
         exit 1
@@ -46,15 +56,16 @@ data:
     exit 0
   iommu_passthrough.sh: |
     #!/bin/bash
-    # Verify IOMMU is in passthrough mode (iommu=pt kernel param).
+    # Verify IOMMU is in passthrough mode. iommu=pt is x86-only; ARM64 (Grace)
+    # requires the arch-generic iommu.passthrough=1 flag instead.
     # This must be set in the node image; the script will fail if it is missing.
 
-    if grep -q 'iommu=pt' /proc/cmdline; then
-      echo "iommu=pt already set."
+    if grep -Eq 'iommu=pt|iommu\.passthrough=1' /proc/cmdline; then
+      echo "IOMMU passthrough already set."
       exit 0
     fi
 
-    echo "ERROR: iommu=pt is NOT set in kernel cmdline. This must be configured in the node image."
+    echo "ERROR: IOMMU passthrough is NOT set in kernel cmdline (expected iommu=pt or iommu.passthrough=1). This must be configured in the node image."
     exit 1
   entrypoint.sh: |
     #!/bin/bash
