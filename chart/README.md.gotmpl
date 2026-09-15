@@ -11,6 +11,7 @@
 | [Network Operator](https://docs.nvidia.com/networking/display/cokan10/network+operator) | Manages NVIDIA networking components (RDMA, SR-IOV, etc.) |
 | GPU Node Config | DaemonSet that configures IOMMU passthrough and disables ACS on PCI switches |
 | NIC Cluster Policy | Configures RDMA shared device plugin for ConnectX NICs |
+| [DRANET](https://dranet.sigs.k8s.io/) | DRA driver exposing RDMA-capable NICs via a `DeviceClass`, as an alternative to the RDMA shared device plugin |
 
 ## Prerequisites
 
@@ -35,22 +36,60 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
 ## Enabling Dynamic Resource Allocation (DRA)
 
 By default this chart deploys the GPU Operator's classic `ClusterPolicy` stack (device plugin +
-toolkit). NVIDIA also ships a `GPUCluster` CR that manages the DRA driver for GPU and ComputeDomain
-resource allocation instead; see [values-dra.yaml](values-dra.yaml) for an example overlay that
-switches to it (requires Kubernetes 1.34.2+ for the `resource.k8s.io` DeviceClass API):
+toolkit) and the RDMA shared device plugin for NICs. NVIDIA also ships a `GPUCluster` CR that
+manages the DRA driver for GPU and ComputeDomain resource allocation, and [DRANET](https://dranet.sigs.k8s.io/)
+is a DRA driver that exposes RDMA-capable NICs the same way. [values-dra.yaml](values-dra.yaml) is
+an example overlay that switches to the full DRA stack (both GPUs and NICs) so that workloads can
+request a GPU and a NIC aligned to the same PCIe root via a constraint on a `ResourceClaimTemplate`:
 
 ```bash
 helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace \
   -f chart/values-dra.yaml
 ```
 
+Requires Kubernetes 1.35+ (DRANET's own documented minimum; higher than the GPU DRA driver's
+1.34.2+) and an NRI-enabled container runtime (containerd 1.7+ or CRI-O with NRI enabled) on every
+node — neither this chart nor Network Operator configures the runtime for NRI.
+
 `gpu-operator.operator.cleanupCRD` defaults to `false` upstream, and the `ClusterPolicy`/`GPUCluster`
 CR is only protected with a `helm.sh/resource-policy: keep` annotation when that value is `true`. On
 an existing installation, switching stacks will therefore delete the unprotected CR through normal
 Helm prune-on-diff behavior, which cascades into the GPU Operator tearing down and replacing the
-driver/toolkit/device-plugin stack on every GPU node. This converges rather than failing outright,
-but is materially disruptive to a running cluster — NVIDIA recommends performing this switch on a
-fresh cluster instead of upgrading in place.
+driver/toolkit/device-plugin stack on every GPU node; it also changes how workloads request RDMA
+NICs (extended resource `nscale.com/rdmashare` → `ResourceClaim` against the `rdma.nscale.com`
+`DeviceClass` this chart creates). This converges rather than failing outright, but is materially
+disruptive to a running cluster — NVIDIA recommends performing this switch on a fresh cluster
+instead of upgrading in place.
+
+DRANET only exposes RDMA devices that the host kernel already has configured; it does not install
+the RDMA driver itself, so `nicClusterPolicy.ofedDriver` stays enabled regardless of which NIC stack
+is active. DRANET moves a claimed interface, including any IP already configured on it, into the
+requesting pod's network namespace; it automatically excludes the interface holding the node's
+default route, but not other host-reserved RDMA interfaces (e.g. one also carrying storage
+traffic) — exclude those explicitly via `--set dranet.args.filter='<CEL expression>'` if applicable.
+
+Workloads request GPU/NIC alignment themselves via a `ResourceClaimTemplate`; see
+[DRANET's NVIDIA guide](https://dranet.sigs.k8s.io/docs/user/nvidia-dranet/) for the general
+pattern. That pattern is written against the `resource.kubernetes.io/pcieRoot` attribute, which
+works as intended on hardware without NVIDIA's ConnectX-8 "Data Direct" feature (e.g. plain
+ConnectX-7 nodes). **On Data Direct hardware (GB200/GB300, and upcoming VR-generation platforms),
+GPU/NIC topology alignment is blocked upstream**: the GPU and NIC are not colocated under one PCI
+switch the way plain ConnectX-7 setups are, and there is no standard attribute that correctly
+expresses the resulting topology yet (tracked in
+[dra-driver-nvidia-gpu#1123](https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu/issues/1123)).
+`resource.kubernetes.io/numaNode` is not a working substitute today either: the DRANET version this
+chart pins (chart v1.4.0) only publishes its own `dra.net/numaNode` attribute, not the standardized
+one that the pinned GPU DRA driver (v0.5.0) uses, and a `matchAttribute` constraint requires the
+identical fully-qualified attribute name from both drivers. Until upstream resolves this, the
+closest working approximation is a per-request CEL selector directly on DRANET's own attribute
+(e.g. `device.attributes["dra.net"].numaNode == 0`), pinning a specific NUMA node per node pool
+rather than portably matching a GPU claim to a NIC claim. Whole-node claims are unaffected by this
+limitation, since a `ResourceClaimTemplate` that consumes every GPU and every NIC on a node has no
+other claimant to mismatch against.
+
+Switching from the RDMA shared device plugin to DRANET also changes the capacity model: the
+plugin's `rdmaHcaMax` (8 by default) lets multiple pods share one HCA, while DRA allocates each NIC
+to exactly one consumer.
 
 ## Requirements
 

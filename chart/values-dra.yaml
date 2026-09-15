@@ -1,18 +1,90 @@
-# Example overlay for enabling the GPUCluster/Dynamic Resource Allocation (DRA) stack instead of
-# the default classic ClusterPolicy stack (device plugin + toolkit).
+# Example overlay for enabling the full Dynamic Resource Allocation (DRA) stack:
+# the GPUCluster CR (DRA driver for GPUs) instead of the classic ClusterPolicy
+# stack, and DRANET (DRA driver for RDMA-capable NICs) instead of the RDMA
+# shared device plugin. Together these let workloads request a GPU and a NIC
+# aligned to the same PCIe root (see the limitation below for Data Direct
+# hardware) via a constraint on a ResourceClaimTemplate.
 #
-# This file is not referenced anywhere automatically - pass it explicitly alongside the chart's
-# default values, e.g.:
+# This file is not referenced anywhere automatically - pass it explicitly alongside
+# the chart's default values, e.g.:
 #
 #   helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace \
 #     -f chart/values-dra.yaml
 #
-# Requires Kubernetes 1.34.2+ for the resource.k8s.io DeviceClass API.
+# Requires Kubernetes 1.35+ (DRANET's own documented minimum; higher than the GPU
+# DRA driver's 1.34.2+) and an NRI-enabled container runtime (containerd 1.7+ or
+# CRI-O with NRI enabled) on every node -- neither this chart nor Network Operator
+# configures the runtime for NRI.
 #
-# Switching stacks on an existing installation deletes the unprotected ClusterPolicy/GPUCluster CR
-# (gpu-operator.operator.cleanupCRD defaults to false) and cascades into the driver/toolkit/
-# device-plugin stack being torn down and replaced on every GPU node. NVIDIA recommends performing
+# Known limitation on ConnectX-8 "Data Direct" hardware (GB200/GB300, and
+# upcoming VR-generation platforms): matchAttribute:
+# resource.kubernetes.io/pcieRoot does not reliably align GPUs and NICs on this
+# hardware. ConnectX-8's Data Direct feature means the GPU and NIC are not
+# colocated under one PCI switch the way plain ConnectX-7 setups are, and there
+# is currently no standard attribute that correctly expresses the resulting
+# topology; see
+# https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu/issues/1123 (open as
+# of this writing, proposing a new attribute for it).
+#
+# resource.kubernetes.io/numaNode is not a working substitute today: the GPU DRA
+# driver (draDriver: v0.5.0, pinned above) publishes that standardized name, but
+# the DRANET version this chart pins (dranet chart v1.4.0) only publishes its own
+# "dra.net/numaNode" attribute, not the standardized one -- a matchAttribute
+# constraint requires the identical fully-qualified attribute name from both
+# drivers, so cross-driver NUMA alignment does not work with the versions this
+# chart currently pins either. There is therefore no working
+# ResourceClaimTemplate constraint that portably aligns a GPU and a DRANET NIC on
+# Data Direct hardware today. Two things unlock it, neither available yet: a
+# resolution to dra-driver-nvidia-gpu#1123 above, or a future DRANET release that
+# publishes the standardized resource.kubernetes.io/numaNode attribute (only
+# present on DRANET's unreleased main branch as of this writing) -- bump the
+# pinned dranet version once one ships. Until then, the closest working
+# approximation is a per-request CEL selector directly on DRANET's own attribute,
+# e.g. device.attributes["dra.net"].numaNode == 0, with the NUMA node value
+# supplied per node pool by whoever authors the ResourceClaimTemplate -- this
+# pins a specific value per node pool rather than portably matching a GPU claim
+# to a NIC claim, but it is functional today.
+#
+# pcieRoot remains the right constraint on hardware without Data Direct (e.g.
+# plain ConnectX-7 nodes), where both drivers already publish it and it works as
+# intended.
+#
+# Whole-node claims are unaffected by this limitation: a ResourceClaimTemplate
+# that consumes every GPU and every NIC on a node has no other claimant to
+# mismatch against, so alignment is moot. Partial-node claims are a different
+# story: rdmaSharedDevicePlugin's Allocate() exposes every HCA in the resource
+# pool to every consuming container regardless of how many were requested (the
+# application itself picks the topologically appropriate NIC per GPU at
+# runtime), whereas a DRA claim for M NICs exposes only those M specific
+# devices the scheduler picked. On Data Direct hardware, where the scheduler
+# cannot align the pick, a partial-GPU pod genuinely loses alignment options it
+# has today. To reproduce today's in-pod visibility for a partial-GPU pod,
+# claim every NIC on the node alongside it -- this works, but excludes every
+# other pod on that node from NICs entirely, which is the same one-consumer-
+# per-device capacity tradeoff of adopting DRA at all: today's
+# rdmaSharedDevicePlugin lets up to rdmaHcaMax (8 by default) pods share one
+# HCA, while DRA allocates each device to exactly one consumer.
+#
+# Switching stacks on an existing installation deletes the unprotected
+# ClusterPolicy/GPUCluster CR (gpu-operator.operator.cleanupCRD defaults to false)
+# and cascades into the driver/toolkit/device-plugin stack being torn down and
+# replaced on every GPU node; it also changes how workloads request RDMA NICs
+# (extended resource "nscale.com/rdmashare" -> ResourceClaim against the
+# "rdma.nscale.com" DeviceClass this chart creates). NVIDIA recommends performing
 # this switch on a fresh cluster rather than upgrading in place.
+#
+# DRANET only exposes RDMA devices that the host kernel already has configured; it
+# does not install the RDMA driver itself, so nicClusterPolicy.ofedDriver stays
+# enabled. DRANET moves a claimed interface, including any IP already configured
+# on it, into the requesting pod's network namespace; it automatically excludes
+# the interface holding the node's default route, but not other host-reserved
+# RDMA interfaces (e.g. one also carrying storage traffic) -- exclude those
+# explicitly via --set dranet.args.filter='<CEL expression>' if applicable.
+#
+# Workloads request the alignment themselves via a ResourceClaimTemplate; see
+# https://dranet.sigs.k8s.io/docs/user/nvidia-dranet/ for the general pattern
+# (written against pcieRoot -- only usable as-is on non-Data-Direct hardware per
+# the limitation above).
 
 gpu-operator:
   driver:
@@ -25,3 +97,11 @@ gpu-operator:
   # Deploy the GPUCluster CR to enable the DRA driver for GPU and ComputeDomain resource allocation
   gpuCluster:
     deployCR: true
+
+nicClusterPolicy:
+  # Mutually exclusive with dranetDeviceClass.enabled: both would manage the same physical RDMA devices
+  rdmaSharedDevicePlugin:
+    enabled: false
+
+dranetDeviceClass:
+  enabled: true

@@ -8,5 +8,8 @@ dependencies:
 - name: network-operator
   repository: https://helm.ngc.nvidia.com/nvidia
   version: 26.4.1
-digest: sha256:d2d21e2c15618f80c4b53122e46fe11e029a6eb0e609d2ed2a55f6578221f85d
-generated: "2026-08-30T12:59:52.673262+01:00"
+- name: dranet
+  repository: oci://registry.k8s.io/networking/charts
+  version: v1.4.0
+digest: sha256:919247c5d76b19a85df08dfd70a5388ea535062561f80cab97a8545725ce7ee6
+generated: "2026-09-14T16:17:58.905482+01:00"

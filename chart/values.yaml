@@ -182,3 +182,31 @@ nicClusterPolicy:
           deviceIDs:
             - "1021"  # PCI device ID for ConnectX-7
             - "1023"  # PCI device ID for ConnectX-8
+
+# DeviceClass for RDMA-capable NICs, consumed via DRANET (see values-dra.yaml)
+dranetDeviceClass:
+  # -- Enable the DRANET subchart and the DeviceClass workloads reference
+  # in ResourceClaims/ResourceClaimTemplates for RDMA-capable NICs
+  enabled: false
+  # -- Name of the DeviceClass created for RDMA-capable NICs
+  name: rdma.nscale.com
+  # -- PCI bus:device pairs (the first two segments of a PCI address, e.g. "bb:00" in
+  # "0000:bb:00.0") to exclude from the RDMA DeviceClass selector. NVIDIA's HGX/DGX B200
+  # baseboards expose ConnectX-based PCI functions that Fabric Manager uses to manage the
+  # on-baseboard NVSwitches (see the Fabric Manager User Guide's "SMDL" VPD field); these
+  # report rdma=true like the real backend fabric NICs but aren't network devices. Their
+  # VPD differentiates them, but DRANET doesn't currently surface VPD data. The PCI
+  # bus:device assignment is fixed by the GPU baseboard's PCIe topology -- the Fabric
+  # Manager guide documents this as "a fixed PCIe BDF assignment... as part of the GPU
+  # baseboard", and it's been confirmed consistent (bus:device "bb:00") across two
+  # different baseboard vendors -- so this excludes them by PCI slot as a portable stopgap.
+  # Replace with a VPD- or topology-derived attribute (e.g. a DRANET webhook provider) once
+  # available.
+  excludePciSlots:
+    - "bb:00"
+
+# DRANET subchart values
+dranet:
+  # -- Tolerations for DRANET DaemonSet pods
+  tolerations:
+    - operator: Exists
