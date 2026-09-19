@@ -97,6 +97,11 @@ gpu-operator:
   # Deploy the GPUCluster CR to enable the DRA driver for GPU and ComputeDomain resource allocation
   gpuCluster:
     deployCR: true
+  # Run the standalone DCGM hostengine rather than dcgm-exporter's embedded one: GPUCluster's
+  # DRA driver dynamically creates/destroys ComputeDomain partitions, and only the standalone
+  # hostengine picks up those changes without a dcgm-exporter restart.
+  dcgm:
+    enabled: true
 
 nicClusterPolicy:
   # Mutually exclusive with dranetDeviceClass.enabled: both would manage the same physical RDMA devices
