@@ -12,7 +12,7 @@ repos:
     hooks:
       - id: helm-lint
         name: Helm Lint
-        entry: bash -c 'helm dependency build chart && helm lint chart'
+        entry: bash -c 'helm dependency build chart && helm lint chart && helm template chart -f chart/values-dra.yaml --api-versions resource.k8s.io/v1/DeviceClass > /dev/null'
         language: system
         files: ^chart/
         pass_filenames: false

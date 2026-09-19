@@ -1,0 +1,24 @@
+{{- if .Values.dranetDeviceClass.enabled }}
+{{- if .Values.nicClusterPolicy.rdmaSharedDevicePlugin.enabled }}
+{{- fail "dranetDeviceClass.enabled and nicClusterPolicy.rdmaSharedDevicePlugin.enabled are mutually exclusive: both would manage the same physical RDMA devices." }}
+{{- end }}
+{{- if not (.Capabilities.APIVersions.Has "resource.k8s.io/v1/DeviceClass") }}
+{{- fail "dranetDeviceClass.enabled=true requires a Kubernetes cluster that supports Dynamic Resource Allocation (no resource.k8s.io/v1 DeviceClass API is served). When rendering offline with 'helm template', pass --api-versions resource.k8s.io/v1/DeviceClass" }}
+{{- end }}
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: {{ .Values.dranetDeviceClass.name }}
+  labels:
+    {{- include "nvidia-platform.labels" . | nindent 4 }}
+spec:
+  selectors:
+    - cel:
+        expression: >
+          device.driver == "dra.net" && device.attributes["dra.net"].rdma == true
+    {{- range .Values.dranetDeviceClass.excludePciSlots }}
+    - cel:
+        expression: >
+          !device.attributes["dra.net"].pciAddress.startsWith("0000:{{ . }}.")
+    {{- end }}
+{{- end }}

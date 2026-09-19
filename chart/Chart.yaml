@@ -21,3 +21,8 @@ dependencies:
     version: 26.4.1
     repository: https://helm.ngc.nvidia.com/nvidia
     condition: network-operator.enabled
+
+  - name: dranet
+    version: v1.4.0
+    repository: oci://registry.k8s.io/networking/charts
+    condition: dranetDeviceClass.enabled
