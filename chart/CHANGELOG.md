@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0](https://github.com/nscaledev/nvidia-platform-chart/compare/nvidia-platform-0.2.0...nvidia-platform-0.3.0) (2026-09-19)
+
+
+### Features
+
+* **chart:** add DRANET as a DRA-based alternative for RDMA NICs ([e3cf4f2](https://github.com/nscaledev/nvidia-platform-chart/commit/e3cf4f2d6173a3a563db7439045f79070b4748df))
+* **chart:** add DRANET as a DRA-based alternative for RDMA NICs ([31a9e4b](https://github.com/nscaledev/nvidia-platform-chart/commit/31a9e4bc28249512262fdbc2c688272acae05c06))
+
+
+### Bug Fixes
+
+* **chart:** enable standalone DCGM hostengine ([7a5a773](https://github.com/nscaledev/nvidia-platform-chart/commit/7a5a77375dfdd23dd3ea28c40171f05c246dac7d))
+
+
+### Documentation
+
+* **chart:** regenerate README for dranetDeviceClass.excludePciSlots ([7f0de0f](https://github.com/nscaledev/nvidia-platform-chart/commit/7f0de0f8a241318fbd3f2ee4ef78f874cab919df))
+
 ## [0.2.0](https://github.com/nscaledev/nvidia-platform-chart/compare/nvidia-platform-0.1.2...nvidia-platform-0.2.0) (2026-09-03)
 
 
