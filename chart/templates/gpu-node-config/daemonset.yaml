@@ -27,9 +27,14 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
-              cp /scripts/*.sh /host/tmp/
-              chmod +x /host/tmp/entrypoint.sh /host/tmp/iommu_passthrough.sh /host/tmp/acs_disable.sh
-              chroot /host /tmp/entrypoint.sh
+              set -e
+              # Feed the scripts to the host's bash on stdin rather than copying
+              # them to the host and exec'ing them there - hardened node images
+              # mount /tmp noexec. chroot is needed for the host's pciutils.
+              chroot /host /bin/bash -s < /scripts/iommu_passthrough.sh
+              chroot /host /bin/bash -s < /scripts/acs_disable.sh
+              echo "gpu-node-config complete, sleeping."
+              exec sleep infinity
           securityContext:
             privileged: true
           volumeMounts:
