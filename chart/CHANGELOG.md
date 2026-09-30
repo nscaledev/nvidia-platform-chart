@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1](https://github.com/nscaledev/nvidia-platform-chart/compare/nvidia-platform-0.3.0...nvidia-platform-0.3.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **gpu-node-config:** run scripts via stdin to support noexec /tmp ([9d52cb1](https://github.com/nscaledev/nvidia-platform-chart/commit/9d52cb1b6bf8c07d31766b604bd014eb2ea042cb))
+* **gpu-node-config:** run scripts via stdin to support noexec /tmp ([5c74466](https://github.com/nscaledev/nvidia-platform-chart/commit/5c74466ab98d0d34d172b27d85e854e1a7e803c8))
+
 ## [0.3.0](https://github.com/nscaledev/nvidia-platform-chart/compare/nvidia-platform-0.2.0...nvidia-platform-0.3.0) (2026-09-19)
 
 
