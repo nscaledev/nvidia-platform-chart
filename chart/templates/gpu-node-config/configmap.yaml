@@ -67,13 +67,4 @@ data:
 
     echo "ERROR: IOMMU passthrough is NOT set in kernel cmdline (expected iommu=pt or iommu.passthrough=1). This must be configured in the node image."
     exit 1
-  entrypoint.sh: |
-    #!/bin/bash
-    set -e
-
-    /tmp/iommu_passthrough.sh
-    /tmp/acs_disable.sh
-
-    echo "gpu-node-config complete, sleeping."
-    sleep infinity
 {{- end }}
