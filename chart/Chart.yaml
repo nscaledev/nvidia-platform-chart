@@ -26,3 +26,8 @@ dependencies:
     version: v1.4.0
     repository: oci://registry.k8s.io/networking/charts
     condition: dranetDeviceClass.enabled
+
+  - name: nvsentinel
+    version: v1.27.0
+    repository: oci://ghcr.io/nvidia
+    condition: nvsentinel.enabled

@@ -11,5 +11,8 @@ dependencies:
 - name: dranet
   repository: oci://registry.k8s.io/networking/charts
   version: v1.4.0
-digest: sha256:919247c5d76b19a85df08dfd70a5388ea535062561f80cab97a8545725ce7ee6
-generated: "2026-09-14T16:17:58.905482+01:00"
+- name: nvsentinel
+  repository: oci://ghcr.io/nvidia
+  version: v1.27.0
+digest: sha256:8653b6f53fd3efcb255c159cbef675833fb0ed07745f1662250173caf42b9d64
+generated: "2026-10-14T11:06:43.292777+01:00"

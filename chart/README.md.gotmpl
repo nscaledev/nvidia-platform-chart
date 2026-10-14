@@ -12,6 +12,7 @@
 | GPU Node Config | DaemonSet that configures IOMMU passthrough and disables ACS on PCI switches |
 | NIC Cluster Policy | Configures RDMA shared device plugin for ConnectX NICs |
 | [DRANET](https://dranet.sigs.k8s.io/) | DRA driver exposing RDMA-capable NICs via a `DeviceClass`, as an alternative to the RDMA shared device plugin |
+| [NVSentinel](https://github.com/NVIDIA/NVSentinel) | GPU fault detection (opt-in, monitor-only): reports GPU faults as node conditions, Events and labels |
 
 ## Prerequisites
 
@@ -90,6 +91,37 @@ other claimant to mismatch against.
 Switching from the RDMA shared device plugin to DRANET also changes the capacity model: the
 plugin's `rdmaHcaMax` (8 by default) lets multiple pods share one HCA, while DRA allocates each NIC
 to exactly one consumer.
+
+## Enabling NVSentinel GPU fault detection
+
+[NVSentinel](https://github.com/NVIDIA/NVSentinel) is off by default and requires Kubernetes 1.34+
+(NVSentinel's own documented minimum). Its gpu-health-monitor needs GPU Operator's standalone DCGM
+hostengine, which [values-dra.yaml](values-dra.yaml) enables but the default `ClusterPolicy` mode
+does not, so the render fails unless DCGM is enabled too:
+
+```bash
+# GPUCluster (DRA) mode
+helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace \
+  -f chart/values-dra.yaml --set nvsentinel.enabled=true
+
+# Default ClusterPolicy mode
+helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace \
+  --set nvsentinel.enabled=true --set gpu-operator.dcgm.enabled=true
+```
+
+NVSentinel is monitor-only: it reports GPU faults as node conditions, Events in the `default`
+namespace, `nvsentinel.dgxc.nvidia.com/*` node labels and the `dgxc.nvidia.com/devices` annotation
+on GPU pods. It never cordons, drains or evicts; its acting components are pinned off.
+
+In DRA mode, metadata-collector requests an admin-access DRA GPU claim, which the API server only
+admits in a namespace labelled `resource.kubernetes.io/admin-access=true`. GPU Operator adds that
+label only after the install, so a pre-install/pre-upgrade hook Job labels the release namespace
+first. The label grants namespace-wide DRA admin access and is never removed.
+
+Its node DaemonSets run at `system-node-critical` priority, so on a full GPU node they can preempt
+tenant pods. They request about 500m CPU / 896Mi per GPU node (platform-connectors 200m/512Mi;
+gpu-health-monitor, syslog-health-monitor and metadata-collector 100m/128Mi each).
+metadata-collector uses host networking and binds node port 2112.
 
 ## Requirements
 

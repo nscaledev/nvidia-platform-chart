@@ -12,6 +12,7 @@ Umbrella chart for deploying NVIDIA GPU/network infrastructure and node-level tu
 | GPU Node Config | DaemonSet that configures IOMMU passthrough and disables ACS on PCI switches |
 | NIC Cluster Policy | Configures RDMA shared device plugin for ConnectX NICs |
 | [DRANET](https://dranet.sigs.k8s.io/) | DRA driver exposing RDMA-capable NICs via a `DeviceClass`, as an alternative to the RDMA shared device plugin |
+| [NVSentinel](https://github.com/NVIDIA/NVSentinel) | GPU fault detection (opt-in, monitor-only): reports GPU faults as node conditions, Events and labels |
 
 ## Prerequisites
 
@@ -91,12 +92,44 @@ Switching from the RDMA shared device plugin to DRANET also changes the capacity
 plugin's `rdmaHcaMax` (8 by default) lets multiple pods share one HCA, while DRA allocates each NIC
 to exactly one consumer.
 
+## Enabling NVSentinel GPU fault detection
+
+[NVSentinel](https://github.com/NVIDIA/NVSentinel) is off by default and requires Kubernetes 1.34+
+(NVSentinel's own documented minimum). Its gpu-health-monitor needs GPU Operator's standalone DCGM
+hostengine, which [values-dra.yaml](values-dra.yaml) enables but the default `ClusterPolicy` mode
+does not, so the render fails unless DCGM is enabled too:
+
+```bash
+# GPUCluster (DRA) mode
+helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace \
+  -f chart/values-dra.yaml --set nvsentinel.enabled=true
+
+# Default ClusterPolicy mode
+helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace \
+  --set nvsentinel.enabled=true --set gpu-operator.dcgm.enabled=true
+```
+
+NVSentinel is monitor-only: it reports GPU faults as node conditions, Events in the `default`
+namespace, `nvsentinel.dgxc.nvidia.com/*` node labels and the `dgxc.nvidia.com/devices` annotation
+on GPU pods. It never cordons, drains or evicts; its acting components are pinned off.
+
+In DRA mode, metadata-collector requests an admin-access DRA GPU claim, which the API server only
+admits in a namespace labelled `resource.kubernetes.io/admin-access=true`. GPU Operator adds that
+label only after the install, so a pre-install/pre-upgrade hook Job labels the release namespace
+first. The label grants namespace-wide DRA admin access and is never removed.
+
+Its node DaemonSets run at `system-node-critical` priority, so on a full GPU node they can preempt
+tenant pods. They request about 500m CPU / 896Mi per GPU node (platform-connectors 200m/512Mi;
+gpu-health-monitor, syslog-health-monitor and metadata-collector 100m/128Mi each).
+metadata-collector uses host networking and binds node port 2112.
+
 ## Requirements
 
 | Repository | Name | Version |
 |------------|------|---------|
 | https://helm.ngc.nvidia.com/nvidia | gpu-operator | v26.7.0 |
 | https://helm.ngc.nvidia.com/nvidia | network-operator | 26.4.1 |
+| oci://ghcr.io/nvidia | nvsentinel | v1.27.0 |
 | oci://registry.k8s.io/networking/charts | dranet | v1.4.0 |
 | oci://registry.k8s.io/nfd/charts | node-feature-discovery | 0.19.0 |
 
@@ -167,6 +200,23 @@ to exactly one consumer.
 | node-feature-discovery.worker.config.sources.pci.deviceClassWhitelist | list | `["02","03","0b40","12"]` | PCI device classes to detect |
 | node-feature-discovery.worker.config.sources.pci.deviceLabelFields | list | `["vendor"]` | PCI fields to use as labels |
 | node-feature-discovery.worker.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for NFD worker pods |
+| nvsentinel.enabled | bool | `false` | Enable the NVSentinel subchart. Monitor-only: it reports GPU faults as node conditions, Events and labels, and never cordons, drains, evicts or reboots. Requires gpu-operator.dcgm.enabled=true (values-dra.yaml sets it; the classic default does not) |
+| nvsentinel.global.dcgm.service.endpoint | string | `"nvidia-dcgm-dra,nvidia-dcgm"` | GPU Operator's standalone DCGM Services, tried in order (nvidia-dcgm-dra in GPUCluster mode, nvidia-dcgm in ClusterPolicy mode). Short names resolve in the release namespace; the upstream default hard-codes the gpu-operator namespace |
+| nvsentinel.global.faultQuarantine.enabled | bool | `false` | Pinned off: cordons and taints faulty nodes |
+| nvsentinel.global.faultRemediation.enabled | bool | `false` | Pinned off: remediates (e.g. reboots) faulty nodes |
+| nvsentinel.global.gpuDraEnabled | bool | `false` | Set true (as values-dra.yaml does) in GPUCluster/DRA mode: metadata-collector then uses an admin-access DRA GPU claim instead of the nvidia RuntimeClass, and this chart labels its namespace for DRA admin access in a pre-install/pre-upgrade hook |
+| nvsentinel.global.janitor.enabled | bool | `false` | Pinned off: executes remediation actions |
+| nvsentinel.global.janitorProvider.enabled | bool | `false` | Pinned off: CSP provider for janitor remediation actions |
+| nvsentinel.global.lifecycleManager.enabled | bool | `false` | Pinned off: reconciles node maintenance requests |
+| nvsentinel.global.metadataCollector.enabled | bool | `true` | Pinned on: maps faults to the specific GPU and the pods using it |
+| nvsentinel.global.nodeDrainer.enabled | bool | `false` | Pinned off: drains faulty nodes |
+| nvsentinel.global.priorityClassName | string | `"system-node-critical"` | Priority class for NVSentinel's node DaemonSets |
+| nvsentinel.gpu-health-monitor.dcgmConnectivity.runtimeDebounce.failureThreshold | int | `3` | Consecutive failed DCGM polls before reporting a connectivity failure |
+| nvsentinel.gpu-health-monitor.dcgmConnectivity.startupGate.enabled | bool | `true` | Wait for DCGM before starting, avoiding a false fatal GpuDcgmConnectivityFailure on every boot and DCGM restart |
+| nvsentinel.networkPolicy.enabled | bool | `false` | Create NVSentinel's metrics-access NetworkPolicy. Off because it selects every pod in the release namespace and would block DCGM (port 5555) |
+| nvsentinel.platformConnector.affinity | object | `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"nvsentinel.dgxc.nvidia.com/driver.installed","operator":"In","values":["true"]}]}]}}}` | Keep platform-connectors on GPU nodes. NVSentinel's labeler sets this label once a driver pod is Ready; if it never appears, see nvsentinel.labeler.driverAppLabel |
+| nvsentinel.podMonitor.enabled | bool | `false` | Create NVSentinel's PodMonitor. Off because it renders without checking for the Prometheus Operator CRDs, which would fail installs on clusters without them |
+| nvsentinelNamespaceLabel.image | string | `"registry.k8s.io/kubectl:v1.36.5"` | kubectl image for the pre-install/pre-upgrade hook Job that labels the release namespace resource.kubernetes.io/admin-access=true |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)
