@@ -94,9 +94,10 @@ to exactly one consumer.
 
 ## Enabling NVSentinel GPU fault detection
 
-[NVSentinel](https://github.com/NVIDIA/NVSentinel) is off by default. Its gpu-health-monitor needs
-GPU Operator's standalone DCGM hostengine, which [values-dra.yaml](values-dra.yaml) enables but the
-default `ClusterPolicy` mode does not, so the render fails unless DCGM is enabled too:
+[NVSentinel](https://github.com/NVIDIA/NVSentinel) is off by default and requires Kubernetes 1.34+
+(NVSentinel's own documented minimum). Its gpu-health-monitor needs GPU Operator's standalone DCGM
+hostengine, which [values-dra.yaml](values-dra.yaml) enables but the default `ClusterPolicy` mode
+does not, so the render fails unless DCGM is enabled too:
 
 ```bash
 # GPUCluster (DRA) mode
