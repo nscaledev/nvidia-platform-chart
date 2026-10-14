@@ -1,0 +1,86 @@
+{{- /*
+The API server only admits NVSentinel metadata-collector's adminAccess ResourceClaimTemplate in a
+namespace labelled resource.kubernetes.io/admin-access=true. gpu-operator adds that label only when
+its GPUCluster controller reconciles, after this install, so this hook adds it first. The label is
+never removed, matching gpu-operator.
+*/}}
+{{- if and .Values.nvsentinel.enabled .Values.nvsentinel.global.gpuDraEnabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nvsentinel-namespace-label
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nvidia-platform.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "0"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nvsentinel-namespace-label
+  labels:
+    {{- include "nvidia-platform.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "0"
+rules:
+  - apiGroups: [""]
+    resources: [namespaces]
+    resourceNames: [{{ .Release.Namespace | quote }}]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: nvsentinel-namespace-label
+  labels:
+    {{- include "nvidia-platform.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "0"
+subjects:
+  - kind: ServiceAccount
+    name: nvsentinel-namespace-label
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: nvsentinel-namespace-label
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nvsentinel-namespace-label
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nvidia-platform.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "1"
+spec:
+  template:
+    spec:
+      serviceAccountName: nvsentinel-namespace-label
+      restartPolicy: OnFailure
+      # Only the control-plane taint, as gpu-operator's own hook Job: tolerating every taint would
+      # let this install-gating pod bind to a NotReady or cordoned node and stall the release.
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: kubectl
+          image: {{ .Values.nvsentinelNamespaceLabel.image | quote }}
+          args:
+            - label
+            - namespace
+            - {{ .Release.Namespace | quote }}
+            - resource.kubernetes.io/admin-access=true
+            - --overwrite
+{{- end }}

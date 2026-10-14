@@ -1,0 +1,15 @@
+{{/*
+Renders no resource. Exists purely to fail the render early with a clear error, instead of
+letting misconfiguration surface later as a pod that never becomes ready.
+
+NVSentinel's gpu-health-monitor, in its default operator-service DCGM mode, connects to GPU
+Operator's standalone DCGM hostengine Service, which exists only with gpu-operator.dcgm.enabled.
+*/}}
+{{- $gpuOperator := index .Values "gpu-operator" }}
+{{- if and .Values.nvsentinel.enabled
+      $gpuOperator.enabled
+      .Values.nvsentinel.global.gpuHealthMonitor.enabled
+      (eq .Values.nvsentinel.global.dcgm.mode "operator-service")
+      (not $gpuOperator.dcgm.enabled) }}
+{{- fail "nvsentinel.enabled=true requires gpu-operator.dcgm.enabled=true: NVSentinel's gpu-health-monitor connects to GPU Operator's standalone DCGM hostengine, which the default ClusterPolicy mode does not deploy (values-dra.yaml enables it)" }}
+{{- end }}
