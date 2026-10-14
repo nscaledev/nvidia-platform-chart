@@ -110,3 +110,9 @@ nicClusterPolicy:
 
 dranetDeviceClass:
   enabled: true
+
+nvsentinel:
+  global:
+    # GPUCluster (DRA) mode has no nvidia RuntimeClass: metadata-collector uses an
+    # admin-access DRA GPU claim instead (only takes effect when nvsentinel.enabled)
+    gpuDraEnabled: true
