@@ -4,12 +4,12 @@ dependencies:
   version: 0.19.0
 - name: gpu-operator
   repository: https://helm.ngc.nvidia.com/nvidia
-  version: v26.7.0
+  version: v26.7.2
 - name: network-operator
   repository: https://helm.ngc.nvidia.com/nvidia
-  version: 26.4.1
+  version: 26.7.0
 - name: dranet
   repository: oci://registry.k8s.io/networking/charts
-  version: v1.4.0
-digest: sha256:919247c5d76b19a85df08dfd70a5388ea535062561f80cab97a8545725ce7ee6
-generated: "2026-09-14T16:17:58.905482+01:00"
+  version: v1.5.0
+digest: sha256:34fd9dac74049f70e2902a19fb1f5be3ea6386d7509094e5458698769edb15b8
+generated: "2026-10-15T12:42:47.196038+01:00"

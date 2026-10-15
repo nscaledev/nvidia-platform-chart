@@ -15,7 +15,7 @@ Umbrella chart for deploying NVIDIA GPU/network infrastructure and node-level tu
 
 ## Prerequisites
 
-- Kubernetes 1.27+
+- Kubernetes 1.32+
 - Helm 3.12+
 - Nodes with NVIDIA GPUs and/or Mellanox ConnectX NICs
 - A CDI-capable container runtime (neither operator configures the container runtime for CDI itself)
@@ -40,7 +40,8 @@ toolkit) and the RDMA shared device plugin for NICs. NVIDIA also ships a `GPUClu
 manages the DRA driver for GPU and ComputeDomain resource allocation, and [DRANET](https://dranet.sigs.k8s.io/)
 is a DRA driver that exposes RDMA-capable NICs the same way. [values-dra.yaml](values-dra.yaml) is
 an example overlay that switches to the full DRA stack (both GPUs and NICs) so that workloads can
-request a GPU and a NIC aligned to the same PCIe root via a constraint on a `ResourceClaimTemplate`:
+request a GPU and a NIC aligned to the same PCIe root or NUMA node via a constraint on a
+`ResourceClaimTemplate`:
 
 ```bash
 helm install nvidia-platform ./chart --namespace nvidia-platform --create-namespace \
@@ -73,19 +74,20 @@ Workloads request GPU/NIC alignment themselves via a `ResourceClaimTemplate`; se
 pattern. That pattern is written against the `resource.kubernetes.io/pcieRoot` attribute, which
 works as intended on hardware without NVIDIA's ConnectX-8 "Data Direct" feature (e.g. plain
 ConnectX-7 nodes). **On Data Direct hardware (GB200/GB300, and upcoming VR-generation platforms),
-GPU/NIC topology alignment is blocked upstream**: the GPU and NIC are not colocated under one PCI
-switch the way plain ConnectX-7 setups are, and there is no standard attribute that correctly
-expresses the resulting topology yet (tracked in
+`pcieRoot` does not align GPUs and NICs**: the GPU and NIC are not colocated under one PCI switch
+the way plain ConnectX-7 setups are, and there is no standard attribute that expresses the resulting
+topology yet (tracked in
 [dra-driver-nvidia-gpu#1123](https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu/issues/1123)).
-`resource.kubernetes.io/numaNode` is not a working substitute today either: the DRANET version this
-chart pins (chart v1.4.0) only publishes its own `dra.net/numaNode` attribute, not the standardized
-one that the pinned GPU DRA driver (v0.5.0) uses, and a `matchAttribute` constraint requires the
-identical fully-qualified attribute name from both drivers. Until upstream resolves this, the
-closest working approximation is a per-request CEL selector directly on DRANET's own attribute
-(e.g. `device.attributes["dra.net"].numaNode == 0`), pinning a specific NUMA node per node pool
-rather than portably matching a GPU claim to a NIC claim. Whole-node claims are unaffected by this
-limitation, since a `ResourceClaimTemplate` that consumes every GPU and every NIC on a node has no
-other claimant to mismatch against.
+On that hardware, constrain on `resource.kubernetes.io/numaNode` instead: both the GPU DRA driver
+(v0.5.1) and DRANET (chart v1.5.0) pinned here publish it, so a `matchAttribute` constraint on it
+aligns a GPU claim and a NIC claim to the same NUMA node. This is coarser than PCIe-root alignment —
+any NIC on the GPU's NUMA node matches, not only the topologically closest one. Whole-node claims
+need no constraint at all, since a `ResourceClaimTemplate` that consumes every GPU and every NIC on
+a node has no other claimant to mismatch against.
+
+Upgrading DRANET from chart v1.4.0 to v1.5.0 adds a host mount for `/var/run/dranet`, where DRANET
+persists pod device configuration. Stop pods that use DRANET-managed devices before upgrading, or
+their state is orphaned inside the old container filesystem.
 
 Switching from the RDMA shared device plugin to DRANET also changes the capacity model: the
 plugin's `rdmaHcaMax` (8 by default) lets multiple pods share one HCA, while DRA allocates each NIC
@@ -95,9 +97,9 @@ to exactly one consumer.
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://helm.ngc.nvidia.com/nvidia | gpu-operator | v26.7.0 |
-| https://helm.ngc.nvidia.com/nvidia | network-operator | 26.4.1 |
-| oci://registry.k8s.io/networking/charts | dranet | v1.4.0 |
+| https://helm.ngc.nvidia.com/nvidia | gpu-operator | v26.7.2 |
+| https://helm.ngc.nvidia.com/nvidia | network-operator | 26.7.0 |
+| oci://registry.k8s.io/networking/charts | dranet | v1.5.0 |
 | oci://registry.k8s.io/nfd/charts | node-feature-discovery | 0.19.0 |
 
 ## Values
@@ -151,13 +153,13 @@ to exactly one consumer.
 | nicClusterPolicy.ofedDriver.upgradePolicy.drain.timeoutSeconds | int | `300` | Drain timeout in seconds |
 | nicClusterPolicy.ofedDriver.upgradePolicy.maxParallelUpgrades | int | `1` | Max nodes upgraded in parallel |
 | nicClusterPolicy.ofedDriver.upgradePolicy.safeLoad | bool | `false` | Enable safe driver loading |
-| nicClusterPolicy.ofedDriver.version | string | `"doca3.4.1-26.04-1.1.0.0-1"` | Image version tag |
+| nicClusterPolicy.ofedDriver.version | string | `"doca3.5.0-26.07-0.7.7.0-0"` | Image version tag |
 | nicClusterPolicy.rdmaSharedDevicePlugin.configs | list | `[{"rdmaHcaMax":8,"resourceName":"rdmashare","resourcePrefix":"nscale.com","selectors":{"deviceIDs":["1021","1023"],"vendors":["15b3"]}}]` | RDMA shared device plugin config list |
 | nicClusterPolicy.rdmaSharedDevicePlugin.enabled | bool | `true` | Enable RDMA shared device plugin |
 | nicClusterPolicy.rdmaSharedDevicePlugin.image | string | `"k8s-rdma-shared-dev-plugin"` | RDMA shared device plugin image name |
 | nicClusterPolicy.rdmaSharedDevicePlugin.repository | string | `"nvcr.io/nvidia/mellanox"` | Image repository |
 | nicClusterPolicy.rdmaSharedDevicePlugin.useCdi | bool | `true` | Enable Container Device Interface (CDI) for the RDMA shared device plugin |
-| nicClusterPolicy.rdmaSharedDevicePlugin.version | string | `"network-operator-v26.4.1"` | Image version tag |
+| nicClusterPolicy.rdmaSharedDevicePlugin.version | string | `"network-operator-v26.7.0"` | Image version tag |
 | node-feature-discovery.enabled | bool | `true` | Enable Node Feature Discovery subchart |
 | node-feature-discovery.fullnameOverride | string | `"node-feature-discovery"` | Override the fullname to avoid including the release name |
 | node-feature-discovery.gc.enable | bool | `true` | Enable NFD garbage collector |

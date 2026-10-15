@@ -13,16 +13,16 @@ dependencies:
     condition: node-feature-discovery.enabled
 
   - name: gpu-operator
-    version: v26.7.0
+    version: v26.7.2
     repository: https://helm.ngc.nvidia.com/nvidia
     condition: gpu-operator.enabled
 
   - name: network-operator
-    version: 26.4.1
+    version: 26.7.0
     repository: https://helm.ngc.nvidia.com/nvidia
     condition: network-operator.enabled
 
   - name: dranet
-    version: v1.4.0
+    version: v1.5.0
     repository: oci://registry.k8s.io/networking/charts
     condition: dranetDeviceClass.enabled
