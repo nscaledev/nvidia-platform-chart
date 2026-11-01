@@ -89,7 +89,7 @@ gpu-operator:
       # starts with nscale-dcgm-metrics-, and the suffix must be the first 8 hex characters of the
       # file's sha256 (from `sha256sum chart/files/dcgm-metrics.csv`); rendering fails otherwise.
       # Update it with every edit to the file so the exporter pods roll onto the new list.
-      name: nscale-dcgm-metrics-7f785bd4
+      name: nscale-dcgm-metrics-d6de0dba
 
 # Network Operator subchart values
 network-operator:
