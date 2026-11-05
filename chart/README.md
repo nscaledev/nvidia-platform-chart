@@ -159,10 +159,13 @@ NotReady for over 2 hours. A few signals are deliberately off:
 The NIC monitor reads each NIC's RDMA device (`mlx5_*`) from host sysfs, which needs the host's
 RDMA subsystem in its default shared netns mode. When DRANET gives a NIC to a pod it moves only the
 NIC's network interface, leaving the RDMA device visible on the host, so InfiniBand monitoring isn't
-affected. In exclusive mode DRANET moves the RDMA device too, and every claim would be reported as a
-fatal device disappearance. The Ethernet (RoCE) checks only act on Ethernet ports. On RoCE fabrics,
-check before rollout that moving an interface into a pod doesn't briefly take the port down. Also
-note that while a NIC is claimed, its interface statistics counters aren't monitored.
+affected. This was verified on B200 InfiniBand nodes with DRANET's defaults: claiming, releasing and
+repeatedly re-claiming NICs, and RDMA traffic over them, raised nothing, and a port fault on a
+claimed NIC was still reported against it. In exclusive mode DRANET moves the RDMA device too, and
+every claim would be reported as a fatal device disappearance. The Ethernet (RoCE) checks only act
+on Ethernet ports. On RoCE fabrics, check before rollout that moving an interface into a pod doesn't
+briefly take the port down. Also note that while a NIC is claimed, its interface statistics counters
+aren't monitored.
 
 In DRA mode, metadata-collector requests an admin-access DRA GPU claim instead of using the `nvidia`
 RuntimeClass, which GPUCluster mode doesn't have. That needs `nvsentinel.global.gpuDraEnabled=true`:
@@ -172,11 +175,22 @@ labelled `resource.kubernetes.io/admin-access=true`. GPU Operator adds that
 label only after the install, so a pre-install/pre-upgrade hook Job labels the release namespace
 first. The label grants namespace-wide DRA admin access and is never removed.
 
-Its node DaemonSets run at `system-node-critical` priority, so on a full GPU node they can preempt
-tenant pods. They request about 600m CPU / 1Gi per GPU node (platform-connectors 200m/512Mi;
-gpu-health-monitor, syslog-health-monitor, nic-health-monitor and metadata-collector 100m/128Mi
-each). metadata-collector uses host networking and binds node port 2112. kubernetes-object-monitor
-adds one 100m/128Mi pod on a GPU node, since it publishes through a platform-connectors socket.
+Its node DaemonSets run at `system-node-critical` priority, so on a full GPU node they preempt
+tenant pods: enabling NVSentinel, or an upgrade that raises its requests, evicts a tenant pod from
+every GPU node without room, so roll those out in a maintenance window. A non-preempting priority
+class is no fix: the pods that don't fit stay Pending, and without platform-connectors the monitors
+that did start crash-loop, leaving the node unmonitored. They request about 600m CPU / 1Gi per GPU
+node (platform-connectors 200m/512Mi; gpu-health-monitor, syslog-health-monitor, nic-health-monitor
+and metadata-collector 100m/128Mi each). metadata-collector uses host networking and binds node port
+2112. kubernetes-object-monitor adds one 100m/128Mi pod on a GPU node, since it publishes through a
+platform-connectors socket.
+
+If gpu-health-monitor loses its DCGM connection uncleanly (the hostengine hangs or becomes
+unreachable but keeps running), NVSentinel v1.30.0 never reconnects: the node keeps a false
+`GpuDcgmConnectivityFailure` condition and the monitor logs `Error getting DCGM handle: Duplicate key
+passed to function` every poll. Restarting gpu-health-monitor doesn't clear it; restarting the
+node's `nvidia-dcgm-dra` (or `nvidia-dcgm`) pod does. An ordinary monitor or DCGM restart is not
+affected.
 
 ## Requirements
 
