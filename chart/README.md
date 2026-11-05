@@ -123,7 +123,7 @@ dcgm-exporter refuses to start if the list contains a field name it doesn't reco
 new name against the exporter version the GPU Operator bundles. When upgrading the GPU Operator,
 re-check the list against the new exporter's `dcp-metrics-included.csv` and keep it a superset.
 
-## Enabling NVSentinel GPU fault detection
+## Enabling NVSentinel GPU and NIC fault detection
 
 [NVSentinel](https://github.com/NVIDIA/NVSentinel) is off by default and requires Kubernetes 1.34+
 (NVSentinel's own documented minimum). Its gpu-health-monitor needs GPU Operator's standalone DCGM
@@ -140,9 +140,29 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
   --set nvsentinel.enabled=true --set gpu-operator.dcgm.enabled=true
 ```
 
-NVSentinel is monitor-only: it reports GPU faults as node conditions, Events in the `default`
-namespace, `nvsentinel.dgxc.nvidia.com/*` node labels and the `dgxc.nvidia.com/devices` annotation
-on GPU pods. It never cordons, drains or evicts; its acting components are pinned off.
+NVSentinel is monitor-only: it reports GPU and NIC faults as node conditions, Events in the
+`default` namespace, `nvsentinel.dgxc.nvidia.com/*` node labels and the `dgxc.nvidia.com/devices`
+annotation on GPU pods. It never cordons, drains or evicts; its acting components are pinned off.
+
+Every health signal that works without a datastore is on: DCGM GPU health, including the
+power-brake and thermal-margin checks; kernel-log XID, SXID, GPU-fallen-off and mlx5 NIC driver
+errors; InfiniBand and RoCE NIC port state, character devices and error counters; and nodes
+NotReady for over 2 hours. A few signals are deliberately off:
+
+- **DCGM power and thermal throttling codes.** They follow load, not faults, so they would fire on
+  every busy GPU. See `nvsentinel.gpu-health-monitor.dcgmHealthCheck.suppressedErrorCodes`.
+- **DCGM IMEX health.** B200 has no IMEX, and on GB300 the DRA driver tears IMEX down when it's idle.
+- **Signals that need more than this chart deploys.** health-events-analyzer needs a datastore,
+  preflight needs cert-manager and modifies tenant GPU pods, and the NVCRE certification, CSP and
+  Slurm monitors depend on NVCRE, a public cloud or Slurm respectively.
+
+The NIC monitor reads each NIC's RDMA device (`mlx5_*`) from host sysfs, which needs the host's
+RDMA subsystem in its default shared netns mode. When DRANET gives a NIC to a pod it moves only the
+NIC's network interface, leaving the RDMA device visible on the host, so InfiniBand monitoring isn't
+affected. In exclusive mode DRANET moves the RDMA device too, and every claim would be reported as a
+fatal device disappearance. The Ethernet (RoCE) checks only act on Ethernet ports. On RoCE fabrics,
+check before rollout that moving an interface into a pod doesn't briefly take the port down. Also
+note that while a NIC is claimed, its interface statistics counters aren't monitored.
 
 In DRA mode, metadata-collector requests an admin-access DRA GPU claim, which the API server only
 admits in a namespace labelled `resource.kubernetes.io/admin-access=true`. GPU Operator adds that
@@ -150,9 +170,10 @@ label only after the install, so a pre-install/pre-upgrade hook Job labels the r
 first. The label grants namespace-wide DRA admin access and is never removed.
 
 Its node DaemonSets run at `system-node-critical` priority, so on a full GPU node they can preempt
-tenant pods. They request about 500m CPU / 896Mi per GPU node (platform-connectors 200m/512Mi;
-gpu-health-monitor, syslog-health-monitor and metadata-collector 100m/128Mi each).
-metadata-collector uses host networking and binds node port 2112.
+tenant pods. They request about 600m CPU / 1Gi per GPU node (platform-connectors 200m/512Mi;
+gpu-health-monitor, syslog-health-monitor, nic-health-monitor and metadata-collector 100m/128Mi
+each). metadata-collector uses host networking and binds node port 2112. kubernetes-object-monitor
+adds one 100m/128Mi pod on a GPU node, since it publishes through a platform-connectors socket.
 
 ## Requirements
 
@@ -232,22 +253,31 @@ metadata-collector uses host networking and binds node port 2112.
 | node-feature-discovery.worker.config.sources.pci.deviceClassWhitelist | list | `["02","03","0b40","12"]` | PCI device classes to detect |
 | node-feature-discovery.worker.config.sources.pci.deviceLabelFields | list | `["vendor"]` | PCI fields to use as labels |
 | node-feature-discovery.worker.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for NFD worker pods |
-| nvsentinel.enabled | bool | `false` | Enable the NVSentinel subchart. Monitor-only: it reports GPU faults as node conditions, Events and labels, and never cordons, drains, evicts or reboots. Requires gpu-operator.dcgm.enabled=true (values-dra.yaml sets it; the classic default does not) |
+| nvsentinel.enabled | bool | `false` | Enable the NVSentinel subchart. Monitor-only: it reports GPU and NIC faults as node conditions, Events and labels, and never cordons, drains, evicts or reboots. Requires gpu-operator.dcgm.enabled=true (values-dra.yaml sets it; the classic default does not) |
 | nvsentinel.global.dcgm.service.endpoint | string | `"nvidia-dcgm-dra,nvidia-dcgm"` | GPU Operator's standalone DCGM Services, tried in order (nvidia-dcgm-dra in GPUCluster mode, nvidia-dcgm in ClusterPolicy mode). Short names resolve in the release namespace; the upstream default hard-codes the gpu-operator namespace |
 | nvsentinel.global.faultQuarantine.enabled | bool | `false` | Pinned off: cordons and taints faulty nodes |
 | nvsentinel.global.faultRemediation.enabled | bool | `false` | Pinned off: remediates (e.g. reboots) faulty nodes |
 | nvsentinel.global.gpuDraEnabled | bool | `false` | Set true (as values-dra.yaml does) in GPUCluster/DRA mode: metadata-collector then uses an admin-access DRA GPU claim instead of the nvidia RuntimeClass, and this chart labels its namespace for DRA admin access in a pre-install/pre-upgrade hook |
 | nvsentinel.global.janitor.enabled | bool | `false` | Pinned off: executes remediation actions |
 | nvsentinel.global.janitorProvider.enabled | bool | `false` | Pinned off: CSP provider for janitor remediation actions |
+| nvsentinel.global.kubernetesObjectMonitor.enabled | bool | `true` | Report nodes NotReady for over 2 hours |
 | nvsentinel.global.lifecycleManager.enabled | bool | `false` | Pinned off: reconciles node maintenance requests |
 | nvsentinel.global.metadataCollector.enabled | bool | `true` | Pinned on: maps faults to the specific GPU and the pods using it |
+| nvsentinel.global.nicHealthMonitor.enabled | bool | `true` | Monitor InfiniBand and RoCE NIC port state, character devices and error counters from host sysfs. Requires the host's RDMA subsystem in shared netns mode (the kernel default): in exclusive mode DRANET moves each claimed mlx5 device out of the host's view, which this monitor reports as a fatal device disappearance |
 | nvsentinel.global.nodeDrainer.enabled | bool | `false` | Pinned off: drains faulty nodes |
 | nvsentinel.global.priorityClassName | string | `"system-node-critical"` | Priority class for NVSentinel's node DaemonSets |
 | nvsentinel.gpu-health-monitor.dcgmConnectivity.runtimeDebounce.failureThreshold | int | `3` | Consecutive failed DCGM polls before reporting a connectivity failure |
 | nvsentinel.gpu-health-monitor.dcgmConnectivity.startupGate.enabled | bool | `true` | Wait for DCGM before starting, avoiding a false fatal GpuDcgmConnectivityFailure on every boot and DCGM restart |
+| nvsentinel.gpu-health-monitor.dcgmFieldsMonitoring.gpuPowerBrakeMonitoringEnabled | bool | `true` | Report GPUs whose hardware power brake is forcing clocks down |
+| nvsentinel.gpu-health-monitor.dcgmFieldsMonitoring.gpuPowerBrakeStoreOnly | bool | `false` | Publish power-brake events. Upstream's store-only default sends them only to the datastore, which this chart doesn't deploy, so they would never be seen |
+| nvsentinel.gpu-health-monitor.dcgmFieldsMonitoring.gpuTempLimitStoreOnly | bool | `false` | Publish GPU thermal-margin (T.Limit) events, for the same reason |
+| nvsentinel.gpu-health-monitor.dcgmHealthCheck.suppressedErrorCodes | list | `["DCGM_FR_CLOCK_THROTTLE_POWER","DCGM_FR_CLOCKS_EVENT_POWER","DCGM_FR_CLOCK_THROTTLE_THERMAL","DCGM_FR_CLOCKS_EVENT_THERMAL","DCGM_FR_NVLINK_EFFECTIVE_BER_THRESHOLD","DCGM_FR_NVLINK_SYMBOL_BER_THRESHOLD"]` | DCGM codes never reported. Restates upstream's list so the choice is explicit. The POWER and THERMAL throttling codes are raised whenever a busy GPU reaches its power or thermal cap: DCGM's recommended action for them is NONE and they follow load rather than faults, so reporting them would flood Events on healthy, busy GPUs. Real power and thermal faults still surface through the power-brake and thermal-margin checks and DCGM's other codes. Each throttling code is listed under both its current and deprecated name. The NVLink BER codes were removed in DCGM 4.7.0 because they failed healthy GPUs; only older hostengines still report them |
+| nvsentinel.kubernetes-object-monitor.affinity | object | `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"nvsentinel.dgxc.nvidia.com/driver.installed","operator":"In","values":["true"]}]}]}}}` | Run beside a platform-connectors pod: it publishes through that pod's node-local socket, and platform-connectors only runs on GPU nodes (see platformConnector.affinity) |
 | nvsentinel.networkPolicy.enabled | bool | `false` | Create NVSentinel's metrics-access NetworkPolicy. Off because it selects every pod in the release namespace and would block DCGM (port 5555) |
 | nvsentinel.platformConnector.affinity | object | `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"nvsentinel.dgxc.nvidia.com/driver.installed","operator":"In","values":["true"]}]}]}}}` | Keep platform-connectors on GPU nodes. NVSentinel's labeler sets this label once a driver pod is Ready; if it never appears, see nvsentinel.labeler.driverAppLabel |
 | nvsentinel.podMonitor.enabled | bool | `false` | Create NVSentinel's PodMonitor. Off because it renders without checking for the Prometheus Operator CRDs, which would fail installs on clusters without them |
+| nvsentinel.syslog-health-monitor.enabledChecks | list | `["SysLogsXIDError","SysLogsSXIDError","SysLogsGPUFallenOff","SysLogsNICDriverError"]` | Kernel-log checks. Upstream's three GPU checks plus the mlx5 NIC driver check; Helm replaces lists, so upstream's defaults are restated |
+| nvsentinel.syslog-health-monitor.nicDriverDetection.patterns | list | `[{"enabled":true,"name":"cmd_exec_timeout"},{"enabled":true,"name":"health_poll_failed"},{"enabled":true,"name":"unrecoverable_err"},{"enabled":true,"name":"netdev_watchdog"},{"enabled":true,"name":"pci_power_insufficient"},{"enabled":true,"name":"port_module_high_temp"},{"enabled":true,"name":"access_reg_failed"},{"enabled":true,"name":"module_unplugged"},{"enabled":true,"name":"mlx5_tx_timeout_detected"},{"enabled":true,"name":"mlx5_rx_timeout_detected"},{"enabled":true,"name":"mlx5_napi_soft_lockup"}]` | mlx5 kernel-log patterns for SysLogsNICDriverError, all enabled (upstream ships them all disabled). Regexes, severities and actions are defined upstream |
 | nvsentinelNamespaceLabel.image | string | `"registry.k8s.io/kubectl:v1.36.5"` | kubectl image for the pre-install/pre-upgrade hook Job that labels the release namespace resource.kubernetes.io/admin-access=true |
 
 ----------------------------------------------

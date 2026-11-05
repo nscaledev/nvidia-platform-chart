@@ -219,9 +219,9 @@ dranet:
   tolerations:
     - operator: Exists
 
-# NVSentinel GPU fault detection subchart (opt-in, monitor-only)
+# NVSentinel GPU and NIC fault detection subchart (opt-in, monitor-only)
 nvsentinel:
-  # -- Enable the NVSentinel subchart. Monitor-only: it reports GPU faults as node
+  # -- Enable the NVSentinel subchart. Monitor-only: it reports GPU and NIC faults as node
   # conditions, Events and labels, and never cordons, drains, evicts or reboots.
   # Requires gpu-operator.dcgm.enabled=true (values-dra.yaml sets it; the classic
   # default does not)
@@ -256,6 +256,15 @@ nvsentinel:
     metadataCollector:
       # -- Pinned on: maps faults to the specific GPU and the pods using it
       enabled: true
+    nicHealthMonitor:
+      # -- Monitor InfiniBand and RoCE NIC port state, character devices and error counters
+      # from host sysfs. Requires the host's RDMA subsystem in shared netns mode (the kernel
+      # default): in exclusive mode DRANET moves each claimed mlx5 device out of the host's
+      # view, which this monitor reports as a fatal device disappearance
+      enabled: true
+    kubernetesObjectMonitor:
+      # -- Report nodes NotReady for over 2 hours
+      enabled: true
     # -- Set true (as values-dra.yaml does) in GPUCluster/DRA mode: metadata-collector
     # then uses an admin-access DRA GPU claim instead of the nvidia RuntimeClass, and
     # this chart labels its namespace for DRA admin access in a pre-install/pre-upgrade hook
@@ -277,6 +286,75 @@ nvsentinel:
       runtimeDebounce:
         # -- Consecutive failed DCGM polls before reporting a connectivity failure
         failureThreshold: 3
+    dcgmFieldsMonitoring:
+      # -- Report GPUs whose hardware power brake is forcing clocks down
+      gpuPowerBrakeMonitoringEnabled: true
+      # -- Publish power-brake events. Upstream's store-only default sends them only to the
+      # datastore, which this chart doesn't deploy, so they would never be seen
+      gpuPowerBrakeStoreOnly: false
+      # -- Publish GPU thermal-margin (T.Limit) events, for the same reason
+      gpuTempLimitStoreOnly: false
+    dcgmHealthCheck:
+      # -- DCGM codes never reported. Restates upstream's list so the choice is explicit.
+      # The POWER and THERMAL throttling codes are raised whenever a busy GPU reaches its
+      # power or thermal cap: DCGM's recommended action for them is NONE and they follow
+      # load rather than faults, so reporting them would flood Events on healthy, busy
+      # GPUs. Real power and thermal faults still surface through the power-brake and
+      # thermal-margin checks and DCGM's other codes. Each throttling code is listed under
+      # both its current and deprecated name. The NVLink BER codes were removed in DCGM
+      # 4.7.0 because they failed healthy GPUs; only older hostengines still report them
+      suppressedErrorCodes:
+        - DCGM_FR_CLOCK_THROTTLE_POWER
+        - DCGM_FR_CLOCKS_EVENT_POWER
+        - DCGM_FR_CLOCK_THROTTLE_THERMAL
+        - DCGM_FR_CLOCKS_EVENT_THERMAL
+        - DCGM_FR_NVLINK_EFFECTIVE_BER_THRESHOLD
+        - DCGM_FR_NVLINK_SYMBOL_BER_THRESHOLD
+  syslog-health-monitor:
+    # -- Kernel-log checks. Upstream's three GPU checks plus the mlx5 NIC driver check;
+    # Helm replaces lists, so upstream's defaults are restated
+    enabledChecks:
+      - SysLogsXIDError
+      - SysLogsSXIDError
+      - SysLogsGPUFallenOff
+      - SysLogsNICDriverError
+    nicDriverDetection:
+      # -- mlx5 kernel-log patterns for SysLogsNICDriverError, all enabled (upstream ships
+      # them all disabled). Regexes, severities and actions are defined upstream
+      patterns:
+        - name: cmd_exec_timeout
+          enabled: true
+        - name: health_poll_failed
+          enabled: true
+        - name: unrecoverable_err
+          enabled: true
+        - name: netdev_watchdog
+          enabled: true
+        - name: pci_power_insufficient
+          enabled: true
+        - name: port_module_high_temp
+          enabled: true
+        - name: access_reg_failed
+          enabled: true
+        - name: module_unplugged
+          enabled: true
+        - name: mlx5_tx_timeout_detected
+          enabled: true
+        - name: mlx5_rx_timeout_detected
+          enabled: true
+        - name: mlx5_napi_soft_lockup
+          enabled: true
+  kubernetes-object-monitor:
+    # -- Run beside a platform-connectors pod: it publishes through that pod's node-local
+    # socket, and platform-connectors only runs on GPU nodes (see platformConnector.affinity)
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: nvsentinel.dgxc.nvidia.com/driver.installed
+                  operator: In
+                  values: ["true"]
   platformConnector:
     # -- Keep platform-connectors on GPU nodes. NVSentinel's labeler sets this label
     # once a driver pod is Ready; if it never appears, see nvsentinel.labeler.driverAppLabel

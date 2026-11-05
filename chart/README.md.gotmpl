@@ -123,7 +123,7 @@ dcgm-exporter refuses to start if the list contains a field name it doesn't reco
 new name against the exporter version the GPU Operator bundles. When upgrading the GPU Operator,
 re-check the list against the new exporter's `dcp-metrics-included.csv` and keep it a superset.
 
-## Enabling NVSentinel GPU fault detection
+## Enabling NVSentinel GPU and NIC fault detection
 
 [NVSentinel](https://github.com/NVIDIA/NVSentinel) is off by default and requires Kubernetes 1.34+
 (NVSentinel's own documented minimum). Its gpu-health-monitor needs GPU Operator's standalone DCGM
@@ -140,9 +140,29 @@ helm install nvidia-platform ./chart --namespace nvidia-platform --create-namesp
   --set nvsentinel.enabled=true --set gpu-operator.dcgm.enabled=true
 ```
 
-NVSentinel is monitor-only: it reports GPU faults as node conditions, Events in the `default`
-namespace, `nvsentinel.dgxc.nvidia.com/*` node labels and the `dgxc.nvidia.com/devices` annotation
-on GPU pods. It never cordons, drains or evicts; its acting components are pinned off.
+NVSentinel is monitor-only: it reports GPU and NIC faults as node conditions, Events in the
+`default` namespace, `nvsentinel.dgxc.nvidia.com/*` node labels and the `dgxc.nvidia.com/devices`
+annotation on GPU pods. It never cordons, drains or evicts; its acting components are pinned off.
+
+Every health signal that works without a datastore is on: DCGM GPU health, including the
+power-brake and thermal-margin checks; kernel-log XID, SXID, GPU-fallen-off and mlx5 NIC driver
+errors; InfiniBand and RoCE NIC port state, character devices and error counters; and nodes
+NotReady for over 2 hours. A few signals are deliberately off:
+
+- **DCGM power and thermal throttling codes.** They follow load, not faults, so they would fire on
+  every busy GPU. See `nvsentinel.gpu-health-monitor.dcgmHealthCheck.suppressedErrorCodes`.
+- **DCGM IMEX health.** B200 has no IMEX, and on GB300 the DRA driver tears IMEX down when it's idle.
+- **Signals that need more than this chart deploys.** health-events-analyzer needs a datastore,
+  preflight needs cert-manager and modifies tenant GPU pods, and the NVCRE certification, CSP and
+  Slurm monitors depend on NVCRE, a public cloud or Slurm respectively.
+
+The NIC monitor reads each NIC's RDMA device (`mlx5_*`) from host sysfs, which needs the host's
+RDMA subsystem in its default shared netns mode. When DRANET gives a NIC to a pod it moves only the
+NIC's network interface, leaving the RDMA device visible on the host, so InfiniBand monitoring isn't
+affected. In exclusive mode DRANET moves the RDMA device too, and every claim would be reported as a
+fatal device disappearance. The Ethernet (RoCE) checks only act on Ethernet ports. On RoCE fabrics,
+check before rollout that moving an interface into a pod doesn't briefly take the port down. Also
+note that while a NIC is claimed, its interface statistics counters aren't monitored.
 
 In DRA mode, metadata-collector requests an admin-access DRA GPU claim, which the API server only
 admits in a namespace labelled `resource.kubernetes.io/admin-access=true`. GPU Operator adds that
@@ -150,9 +170,10 @@ label only after the install, so a pre-install/pre-upgrade hook Job labels the r
 first. The label grants namespace-wide DRA admin access and is never removed.
 
 Its node DaemonSets run at `system-node-critical` priority, so on a full GPU node they can preempt
-tenant pods. They request about 500m CPU / 896Mi per GPU node (platform-connectors 200m/512Mi;
-gpu-health-monitor, syslog-health-monitor and metadata-collector 100m/128Mi each).
-metadata-collector uses host networking and binds node port 2112.
+tenant pods. They request about 600m CPU / 1Gi per GPU node (platform-connectors 200m/512Mi;
+gpu-health-monitor, syslog-health-monitor, nic-health-monitor and metadata-collector 100m/128Mi
+each). metadata-collector uses host networking and binds node port 2112. kubernetes-object-monitor
+adds one 100m/128Mi pod on a GPU node, since it publishes through a platform-connectors socket.
 
 ## Requirements
 
