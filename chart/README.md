@@ -164,8 +164,11 @@ fatal device disappearance. The Ethernet (RoCE) checks only act on Ethernet port
 check before rollout that moving an interface into a pod doesn't briefly take the port down. Also
 note that while a NIC is claimed, its interface statistics counters aren't monitored.
 
-In DRA mode, metadata-collector requests an admin-access DRA GPU claim, which the API server only
-admits in a namespace labelled `resource.kubernetes.io/admin-access=true`. GPU Operator adds that
+In DRA mode, metadata-collector requests an admin-access DRA GPU claim instead of using the `nvidia`
+RuntimeClass, which GPUCluster mode doesn't have. That needs `nvsentinel.global.gpuDraEnabled=true`:
+values-dra.yaml sets it, and the render fails without it, so set it yourself if you configure
+GPUCluster mode without values-dra.yaml. The API server only admits the claim in a namespace
+labelled `resource.kubernetes.io/admin-access=true`. GPU Operator adds that
 label only after the install, so a pre-install/pre-upgrade hook Job labels the release namespace
 first. The label grants namespace-wide DRA admin access and is never removed.
 
@@ -253,7 +256,7 @@ adds one 100m/128Mi pod on a GPU node, since it publishes through a platform-con
 | node-feature-discovery.worker.config.sources.pci.deviceClassWhitelist | list | `["02","03","0b40","12"]` | PCI device classes to detect |
 | node-feature-discovery.worker.config.sources.pci.deviceLabelFields | list | `["vendor"]` | PCI fields to use as labels |
 | node-feature-discovery.worker.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for NFD worker pods |
-| nvsentinel.enabled | bool | `false` | Enable the NVSentinel subchart. Monitor-only: it reports GPU and NIC faults as node conditions, Events and labels, and never cordons, drains, evicts or reboots. Requires gpu-operator.dcgm.enabled=true (values-dra.yaml sets it; the classic default does not) |
+| nvsentinel.enabled | bool | `false` | Enable the NVSentinel subchart. Monitor-only: it reports GPU and NIC faults as node conditions, Events and labels, and never cordons, drains, evicts or reboots. Requires gpu-operator.dcgm.enabled=true (values-dra.yaml sets it; the classic default does not), and in GPUCluster mode also nvsentinel.global.gpuDraEnabled=true (values-dra.yaml sets it too); the render fails without them |
 | nvsentinel.global.dcgm.service.endpoint | string | `"nvidia-dcgm-dra,nvidia-dcgm"` | GPU Operator's standalone DCGM Services, tried in order (nvidia-dcgm-dra in GPUCluster mode, nvidia-dcgm in ClusterPolicy mode). Short names resolve in the release namespace; the upstream default hard-codes the gpu-operator namespace |
 | nvsentinel.global.faultQuarantine.enabled | bool | `false` | Pinned off: cordons and taints faulty nodes |
 | nvsentinel.global.faultRemediation.enabled | bool | `false` | Pinned off: remediates (e.g. reboots) faulty nodes |

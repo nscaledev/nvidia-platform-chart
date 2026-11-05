@@ -224,7 +224,8 @@ nvsentinel:
   # -- Enable the NVSentinel subchart. Monitor-only: it reports GPU and NIC faults as node
   # conditions, Events and labels, and never cordons, drains, evicts or reboots.
   # Requires gpu-operator.dcgm.enabled=true (values-dra.yaml sets it; the classic
-  # default does not)
+  # default does not), and in GPUCluster mode also nvsentinel.global.gpuDraEnabled=true
+  # (values-dra.yaml sets it too); the render fails without them
   enabled: false
   podMonitor:
     # -- Create NVSentinel's PodMonitor. Off because it renders without checking for

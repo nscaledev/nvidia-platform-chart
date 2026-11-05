@@ -164,8 +164,11 @@ fatal device disappearance. The Ethernet (RoCE) checks only act on Ethernet port
 check before rollout that moving an interface into a pod doesn't briefly take the port down. Also
 note that while a NIC is claimed, its interface statistics counters aren't monitored.
 
-In DRA mode, metadata-collector requests an admin-access DRA GPU claim, which the API server only
-admits in a namespace labelled `resource.kubernetes.io/admin-access=true`. GPU Operator adds that
+In DRA mode, metadata-collector requests an admin-access DRA GPU claim instead of using the `nvidia`
+RuntimeClass, which GPUCluster mode doesn't have. That needs `nvsentinel.global.gpuDraEnabled=true`:
+values-dra.yaml sets it, and the render fails without it, so set it yourself if you configure
+GPUCluster mode without values-dra.yaml. The API server only admits the claim in a namespace
+labelled `resource.kubernetes.io/admin-access=true`. GPU Operator adds that
 label only after the install, so a pre-install/pre-upgrade hook Job labels the release namespace
 first. The label grants namespace-wide DRA admin access and is never removed.
 
