@@ -4,7 +4,9 @@ namespace labelled resource.kubernetes.io/admin-access=true. gpu-operator adds t
 its GPUCluster controller reconciles, after this install, so this hook adds it first. The label is
 never removed, matching gpu-operator.
 */}}
-{{- if and .Values.nvsentinel.enabled .Values.nvsentinel.global.gpuDraEnabled }}
+{{- if and .Values.nvsentinel.enabled
+      .Values.nvsentinel.global.metadataCollector.enabled
+      .Values.nvsentinel.global.gpuDraEnabled }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
