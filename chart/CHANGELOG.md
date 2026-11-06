@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.5.0](https://github.com/nscaledev/nvidia-platform-chart/compare/nvidia-platform-0.4.0...nvidia-platform-0.5.0) (2026-11-06)
+
+
+### Features
+
+* **chart:** add opt-in monitor-only NVSentinel ([4572b1f](https://github.com/nscaledev/nvidia-platform-chart/commit/4572b1f33369eafd9b34fb3ef2a3307859c03e98))
+* **chart:** add opt-in monitor-only NVSentinel ([5e8d0ea](https://github.com/nscaledev/nvidia-platform-chart/commit/5e8d0ea8aa1f2bb06072823dff10ace931218951))
+* **chart:** enable all NVSentinel health signals ([b17f34c](https://github.com/nscaledev/nvidia-platform-chart/commit/b17f34cdb97ebb5b7e40182e25092766fec3d584))
+* **chart:** fail the render when NVSentinel lacks gpuDraEnabled in GPUCluster mode ([2646f13](https://github.com/nscaledev/nvidia-platform-chart/commit/2646f131fb3e339100bec380c2535fafe27d2b1d))
+
+
+### Bug Fixes
+
+* **chart:** keep NVSentinel's kubernetes-object-monitor off ([23a5ecf](https://github.com/nscaledev/nvidia-platform-chart/commit/23a5ecf6b996dcbbe60b8e23a78765cb5588b3f7))
+* **chart:** label NVSentinel's namespace for DRA admin access only with metadata-collector ([a459e4e](https://github.com/nscaledev/nvidia-platform-chart/commit/a459e4e0e3be87480b5f16ea9882363a6f80785f))
+* **chart:** run NVSentinel's kubernetes-object-monitor on GPU nodes again ([4df6a45](https://github.com/nscaledev/nvidia-platform-chart/commit/4df6a459926c8e514b773836475222ee63a7f595))
+
+
+### Documentation
+
+* **chart:** record what validating NVSentinel on B200 showed ([3389178](https://github.com/nscaledev/nvidia-platform-chart/commit/33891784f6ef7ed4275fa7dc5adf97e741e822ab))
+* **chart:** state NVSentinel's Kubernetes 1.34+ requirement ([cb94be6](https://github.com/nscaledev/nvidia-platform-chart/commit/cb94be6ca5c199377ccec4bdbea3580e3a9d63b5))
+
 ## [0.4.0](https://github.com/nscaledev/nvidia-platform-chart/compare/nvidia-platform-0.3.2...nvidia-platform-0.4.0) (2026-10-29)
 
 
