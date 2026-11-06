@@ -264,9 +264,8 @@ nvsentinel:
       # view, which this monitor reports as a fatal device disappearance
       enabled: true
     kubernetesObjectMonitor:
-      # -- Pinned off: it holds a credential that can report on any node, and it publishes
-      # through platform-connectors, which only runs on GPU nodes beside tenant workloads
-      enabled: false
+      # -- Report nodes NotReady for over 2 hours
+      enabled: true
     # -- Set true (as values-dra.yaml does) in GPUCluster/DRA mode: metadata-collector
     # then uses an admin-access DRA GPU claim instead of the nvidia RuntimeClass, and
     # this chart labels its namespace for DRA admin access in a pre-install/pre-upgrade hook
@@ -346,6 +345,20 @@ nvsentinel:
           enabled: true
         - name: mlx5_napi_soft_lockup
           enabled: true
+  kubernetes-object-monitor:
+    # -- Run beside a platform-connectors pod: it publishes through that pod's node-local
+    # socket, and platform-connectors only runs on GPU nodes (see platformConnector.affinity).
+    # It can patch any Node and publish health events for any node, which grants nothing to
+    # a cluster owner with cluster-admin, and platform-connectors can already patch every
+    # node's status
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: nvsentinel.dgxc.nvidia.com/driver.installed
+                  operator: In
+                  values: ["true"]
   platformConnector:
     # -- Keep platform-connectors on GPU nodes. NVSentinel's labeler sets this label
     # once a driver pod is Ready; if it never appears, see nvsentinel.labeler.driverAppLabel
