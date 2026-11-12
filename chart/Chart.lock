@@ -13,6 +13,6 @@ dependencies:
   version: v1.5.0
 - name: nvsentinel
   repository: oci://ghcr.io/nvidia
-  version: v1.30.0
-digest: sha256:c4568e7d028d9624a0c48caa554eb01b093482e5af5e2a75cee8a7a27d6913d5
-generated: "2026-11-05T11:27:39.504643Z"
+  version: v1.31.0
+digest: sha256:2081df80e856015f1ab2800b806f071ad1e1c8af3f4635aa21fdef35a532c178
+generated: "2026-11-12T17:45:53.760011Z"
