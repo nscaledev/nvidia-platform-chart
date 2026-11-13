@@ -191,11 +191,12 @@ acceptable here: the tenant is the cluster owner and already has cluster-admin, 
 grant nothing new. platform-connectors, on the same nodes, can already patch every node's status.
 
 If gpu-health-monitor loses its DCGM connection uncleanly (the hostengine hangs or becomes
-unreachable but keeps running), NVSentinel v1.30.0 never reconnects: the node keeps a false
+unreachable but keeps running), NVSentinel v1.31.0 never reconnects: the node keeps a false
 `GpuDcgmConnectivityFailure` condition and the monitor logs `Error getting DCGM handle: Duplicate key
 passed to function` every poll. Restarting gpu-health-monitor doesn't clear it; restarting the
 node's `nvidia-dcgm-dra` (or `nvidia-dcgm`) pod does. An ordinary monitor or DCGM restart is not
-affected.
+affected. Upstream fixed this after v1.31.0, in
+[NVIDIA/NVSentinel#2365](https://github.com/NVIDIA/NVSentinel/pull/2365).
 
 ## Requirements
 

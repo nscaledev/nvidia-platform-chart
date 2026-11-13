@@ -29,6 +29,6 @@ dependencies:
     condition: dranetDeviceClass.enabled
 
   - name: nvsentinel
-    version: v1.30.0
+    version: v1.31.0
     repository: oci://ghcr.io/nvidia
     condition: nvsentinel.enabled
