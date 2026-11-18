@@ -13,6 +13,7 @@ Umbrella chart for deploying NVIDIA GPU/network infrastructure and node-level tu
 | NIC Cluster Policy | Configures RDMA shared device plugin for ConnectX NICs |
 | [DRANET](https://dranet.sigs.k8s.io/) | DRA driver exposing RDMA-capable NICs via a `DeviceClass`, as an alternative to the RDMA shared device plugin |
 | [NVSentinel](https://github.com/NVIDIA/NVSentinel) | GPU fault detection (opt-in, monitor-only): reports GPU faults as node conditions, Events and labels |
+| nccl-fabric-nri | NRI plugin DaemonSet that sets `NCCL_IB_PKEY` on containers on nodes with a tenant InfiniBand p_key (opt-in) |
 
 ## Prerequisites
 
@@ -198,6 +199,21 @@ node's `nvidia-dcgm-dra` (or `nvidia-dcgm`) pod does. An ordinary monitor or DCG
 affected. Upstream fixed this after v1.31.0, in
 [NVIDIA/NVSentinel#2365](https://github.com/NVIDIA/NVSentinel/pull/2365).
 
+## nccl-fabric-nri
+
+`ncclFabricNri.enabled` (off by default) runs a DaemonSet on GPU nodes that registers an NRI plugin
+with the node's container runtime and sets `NCCL_IB_PKEY` on containers when the node's InfiniBand
+ports carry a tenant p_key. It needs an NRI-enabled runtime, mounts the NRI socket directory
+(`/var/run/nri`), host `/sys` read-only at `/host/sys` (all of it, because `/sys/class/infiniband`
+entries are symlinks into `/sys/devices`) and `/var/lib/nccl-fabric-nri` (sticky state), and runs
+as root (to write the state directory and reach the NRI socket) with all capabilities dropped,
+not privileged, and with no Kubernetes API access or RBAC. Metrics are served on `ncclFabricNri.metricsPort`.
+
+The image is published as `ghcr.io/nscaledev/nccl-fabric-nri:<chart version>`, and `image.tag`
+defaults to the chart version. The release convention in the
+[top-level README](../README.md#nccl-fabric-nri-image) also applies: a Go change that must ship
+immediately should also touch `chart/`.
+
 ## Requirements
 
 | Repository | Name | Version |
@@ -239,6 +255,18 @@ affected. Upstream fixed this after v1.31.0, in
 | gpuNodeConfig.maxUnavailable | int | `1` | Max unavailable nodes during rolling update |
 | gpuNodeConfig.nodeSelector | object | `{"nvidia.com/gpu.present":"true"}` | Node selector for GPU config pods |
 | gpuNodeConfig.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for GPU config pods |
+| ncclFabricNri.enabled | bool | `false` | Enable the nccl-fabric-nri DaemonSet (needs an NRI-enabled container runtime) |
+| ncclFabricNri.hostSysRoot | string | `"/sys"` | Host sysfs root, mounted read-only at /host/sys; the plugin reads /host/sys/class/infiniband. The whole of /sys is needed because class/infiniband entries are symlinks into /sys/devices. Only change it to point tests at a fixture tree |
+| ncclFabricNri.image.repository | string | `"ghcr.io/nscaledev/nccl-fabric-nri"` | Image repository |
+| ncclFabricNri.image.tag | string | `""` | Image tag. Defaults to the chart version, which the release workflow publishes the image under |
+| ncclFabricNri.interval | string | `"5s"` | How often the node's InfiniBand ports are re-read |
+| ncclFabricNri.maxUnavailable | int | `1` | Max unavailable nodes during rolling update |
+| ncclFabricNri.metricsPort | int | `9900` | Port serving Prometheus metrics at /metrics (container port and the metrics address flag) |
+| ncclFabricNri.nodeSelector | object | `{"nvidia.com/gpu.present":"true"}` | Node selector for nccl-fabric-nri pods |
+| ncclFabricNri.pluginIdx | string | `"90"` | NRI plugin index; orders the plugin among others (DRANET is 00) |
+| ncclFabricNri.priorityClassName | string | `"system-node-critical"` | Priority class for nccl-fabric-nri pods; node-critical so the plugin is not evicted ahead of the workloads it serves |
+| ncclFabricNri.resources | object | `{"limits":{"memory":"64Mi"},"requests":{"cpu":"10m","memory":"32Mi"}}` | Resources for the nccl-fabric-nri container |
+| ncclFabricNri.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for nccl-fabric-nri pods |
 | network-operator.enabled | bool | `true` | Enable Network Operator subchart |
 | network-operator.nfd.enabled | bool | `false` | Deploy NFD from Network Operator (disabled, using standalone) |
 | network-operator.operator.fullnameOverride | string | `"network-operator"` | Override the fullname to avoid including the release name |

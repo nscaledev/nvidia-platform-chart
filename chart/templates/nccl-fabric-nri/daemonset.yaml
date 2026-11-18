@@ -1,0 +1,79 @@
+{{- if .Values.ncclFabricNri.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nccl-fabric-nri
+  labels:
+    {{- include "nvidia-platform.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: nccl-fabric-nri
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ .Values.ncclFabricNri.maxUnavailable }}
+  template:
+    metadata:
+      labels:
+        app: nccl-fabric-nri
+    spec:
+      # Talks only to the node's NRI socket and sysfs, never the Kubernetes API.
+      automountServiceAccountToken: false
+      {{- with .Values.ncclFabricNri.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      nodeSelector:
+        {{- toYaml .Values.ncclFabricNri.nodeSelector | nindent 8 }}
+      containers:
+        - name: nccl-fabric-nri
+          image: {{ .Values.ncclFabricNri.image.repository }}:{{ .Values.ncclFabricNri.image.tag | default .Chart.Version }}
+          args:
+            - --plugin-idx={{ .Values.ncclFabricNri.pluginIdx }}
+            - --interval={{ .Values.ncclFabricNri.interval }}
+            - --metrics-addr=:{{ .Values.ncclFabricNri.metricsPort }}
+            - --sysfs=/host/sys/class/infiniband
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.ncclFabricNri.metricsPort }}
+              protocol: TCP
+          {{- with .Values.ncclFabricNri.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          # Root so it can write the root-owned state directory and connect to the
+          # root-owned NRI socket; not privileged and holds no capabilities.
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: nri
+              mountPath: /var/run/nri
+            # All of /sys: /sys/class/infiniband entries are relative symlinks
+            # into /sys/devices, which dangle if only class/ is mounted.
+            - name: sysfs
+              mountPath: /host/sys
+              readOnly: true
+            - name: state
+              mountPath: /var/lib/nccl-fabric-nri
+      volumes:
+        - name: nri
+          hostPath:
+            path: /var/run/nri
+        - name: sysfs
+          hostPath:
+            path: {{ .Values.ncclFabricNri.hostSysRoot }}
+            type: Directory
+        - name: state
+          hostPath:
+            path: /var/lib/nccl-fabric-nri
+            type: DirectoryOrCreate
+      tolerations:
+        {{- toYaml .Values.ncclFabricNri.tolerations | nindent 8 }}
+{{- end }}
