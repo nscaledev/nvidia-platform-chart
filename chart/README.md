@@ -239,6 +239,9 @@ affected. Upstream fixed this after v1.31.0, in
 | gpuNodeConfig.maxUnavailable | int | `1` | Max unavailable nodes during rolling update |
 | gpuNodeConfig.nodeSelector | object | `{"nvidia.com/gpu.present":"true"}` | Node selector for GPU config pods |
 | gpuNodeConfig.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for GPU config pods |
+| ncclInfiniBand.enabled | bool | `false` | Enable the MutatingAdmissionPolicy that adds env to opted-in pods |
+| ncclInfiniBand.env | object | `{"NCCL_IB_PKEY":"1"}` | Variables added to each container that does not already set them. NCCL_IB_PKEY is the tenant p_key's table index (the default partition holds index 0); it works for every NCCL version and for HPC-X's SHARP plugin, which ignore NCCL_IB_PKEY_VALUE. |
+| ncclInfiniBand.optInLabel | string | `"nccl.nscale.com/infiniband-partition"` | Label (value "true") on a namespace or pod that opts its containers in |
 | network-operator.enabled | bool | `true` | Enable Network Operator subchart |
 | network-operator.nfd.enabled | bool | `false` | Deploy NFD from Network Operator (disabled, using standalone) |
 | network-operator.operator.fullnameOverride | string | `"network-operator"` | Override the fullname to avoid including the release name |

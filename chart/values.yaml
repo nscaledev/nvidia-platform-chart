@@ -377,3 +377,21 @@ nvsentinelNamespaceLabel:
   # -- kubectl image for the pre-install/pre-upgrade hook Job that labels the release
   # namespace resource.kubernetes.io/admin-access=true
   image: registry.k8s.io/kubectl:v1.36.5
+
+# Points NCCL at the tenant InfiniBand partition in opted-in pods. hpc-fabric-manager puts a
+# gated host's compute ports in its VPC network's p_key beside the default partition at index
+# 0, which NCCL uses unless told otherwise, so a multi-node job fails after the IB timeout
+# (IBV_WC_RETRY_EXC_ERR). A MutatingAdmissionPolicy adds env to every container of a pod in
+# a namespace labelled, or a pod labelled, with optInLabel; a variable a container already
+# sets is left alone. Opt-in because a host outside hpc-fabric-manager's gate has nothing at
+# index 1. Needs Kubernetes 1.36+ (MutatingAdmissionPolicy GA).
+ncclInfiniBand:
+  # -- Enable the MutatingAdmissionPolicy that adds env to opted-in pods
+  enabled: false
+  # -- Label (value "true") on a namespace or pod that opts its containers in
+  optInLabel: nccl.nscale.com/infiniband-partition
+  # -- Variables added to each container that does not already set them. NCCL_IB_PKEY is
+  # the tenant p_key's table index (the default partition holds index 0); it works for every
+  # NCCL version and for HPC-X's SHARP plugin, which ignore NCCL_IB_PKEY_VALUE.
+  env:
+    NCCL_IB_PKEY: "1"

@@ -24,3 +24,6 @@ without the GPU metadata metadata-collector writes.
       (not .Values.nvsentinel.global.gpuDraEnabled) }}
 {{- fail "nvsentinel.enabled=true with gpu-operator.gpuCluster.deployCR=true requires nvsentinel.global.gpuDraEnabled=true: GPUCluster mode has no nvidia RuntimeClass, so metadata-collector cannot start (values-dra.yaml sets it)" }}
 {{- end }}
+{{- if and .Values.ncclInfiniBand.enabled (not (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/MutatingAdmissionPolicy")) }}
+{{- fail "ncclInfiniBand.enabled=true requires Kubernetes 1.36+ (no admissionregistration.k8s.io/v1 MutatingAdmissionPolicy API is served). When rendering offline with 'helm template', pass --api-versions admissionregistration.k8s.io/v1/MutatingAdmissionPolicy" }}
+{{- end }}
