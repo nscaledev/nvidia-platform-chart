@@ -117,6 +117,43 @@ gpuNodeConfig:
   tolerations:
     - operator: Exists
 
+# nccl-fabric-nri: NRI plugin that sets NCCL_IB_PKEY on containers on nodes whose
+# InfiniBand ports carry a tenant p_key. The image is built from the release
+# commit; see the top-level README (../README.md) for the release convention.
+ncclFabricNri:
+  # -- Enable the nccl-fabric-nri DaemonSet (needs an NRI-enabled container runtime)
+  enabled: false
+  image:
+    # -- Image repository
+    repository: ghcr.io/nscaledev/nccl-fabric-nri
+    # -- Image tag. Defaults to the chart version, which the release workflow publishes the image under
+    tag: ""
+  # -- NRI plugin index; orders the plugin among others (DRANET is 00)
+  pluginIdx: "90"
+  # -- How often the node's InfiniBand ports are re-read
+  interval: 5s
+  # -- Port serving Prometheus metrics at /metrics (container port and the metrics address flag)
+  metricsPort: 9900
+  # -- Host sysfs root, mounted read-only at /host/sys; the plugin reads /host/sys/class/infiniband. The whole of /sys is needed because class/infiniband entries are symlinks into /sys/devices. Only change it to point tests at a fixture tree
+  hostSysRoot: /sys
+  # -- Max unavailable nodes during rolling update
+  maxUnavailable: 1
+  # -- Priority class for nccl-fabric-nri pods; node-critical so the plugin is not evicted ahead of the workloads it serves
+  priorityClassName: system-node-critical
+  # -- Resources for the nccl-fabric-nri container
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+  # -- Node selector for nccl-fabric-nri pods
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+  # -- Tolerations for nccl-fabric-nri pods
+  tolerations:
+    - operator: Exists
+
 # NIC Cluster Policy (RDMA shared device plugin)
 nicClusterPolicy:
   # -- Enable NIC Cluster Policy

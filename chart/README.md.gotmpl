@@ -13,6 +13,7 @@
 | NIC Cluster Policy | Configures RDMA shared device plugin for ConnectX NICs |
 | [DRANET](https://dranet.sigs.k8s.io/) | DRA driver exposing RDMA-capable NICs via a `DeviceClass`, as an alternative to the RDMA shared device plugin |
 | [NVSentinel](https://github.com/NVIDIA/NVSentinel) | GPU fault detection (opt-in, monitor-only): reports GPU faults as node conditions, Events and labels |
+| nccl-fabric-nri | NRI plugin DaemonSet that sets `NCCL_IB_PKEY` on containers on nodes with a tenant InfiniBand p_key (opt-in) |
 
 ## Prerequisites
 
@@ -197,6 +198,21 @@ passed to function` every poll. Restarting gpu-health-monitor doesn't clear it; 
 node's `nvidia-dcgm-dra` (or `nvidia-dcgm`) pod does. An ordinary monitor or DCGM restart is not
 affected. Upstream fixed this after v1.31.0, in
 [NVIDIA/NVSentinel#2365](https://github.com/NVIDIA/NVSentinel/pull/2365).
+
+## nccl-fabric-nri
+
+`ncclFabricNri.enabled` (off by default) runs a DaemonSet on GPU nodes that registers an NRI plugin
+with the node's container runtime and sets `NCCL_IB_PKEY` on containers when the node's InfiniBand
+ports carry a tenant p_key. It needs an NRI-enabled runtime, mounts the NRI socket directory
+(`/var/run/nri`), host `/sys` read-only at `/host/sys` (all of it, because `/sys/class/infiniband`
+entries are symlinks into `/sys/devices`) and `/var/lib/nccl-fabric-nri` (sticky state), and runs
+as root (to write the state directory and reach the NRI socket) with all capabilities dropped,
+not privileged, and with no Kubernetes API access or RBAC. Metrics are served on `ncclFabricNri.metricsPort`.
+
+The image is published as `ghcr.io/nscaledev/nccl-fabric-nri:<chart version>`, and `image.tag`
+defaults to the chart version. The release convention in the
+[top-level README](../README.md#nccl-fabric-nri-image) also applies: a Go change that must ship
+immediately should also touch `chart/`.
 
 ## Requirements
 

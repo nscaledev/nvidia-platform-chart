@@ -1,0 +1,14 @@
+# kind cluster for test/e2e/nri/run.sh. @FIXTURES@ is replaced with the absolute
+# path of test/e2e/nri/fixtures before the cluster is created.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraMounts:
+      # The committed mini sysfs trees (class/infiniband symlinks into
+      # devices/). The plugin never reads these directly: run.sh copies one
+      # into the node-local /fixture/sys (the DaemonSet's hostSysRoot), so
+      # switching fixtures never touches the repository.
+      - hostPath: "@FIXTURES@"
+        containerPath: /fixtures
+        readOnly: true
