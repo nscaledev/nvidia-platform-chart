@@ -107,10 +107,10 @@ and thermal violations, slowdown/shutdown temperatures and the enforced power li
 count, DCGM health status, the GPU recovery action, NVLink 5 error, recovery and bit-error-rate
 counters, NVLink fabric status and health, and Grace-Blackwell C2C link errors. For utilisation and
 capacity monitoring it also adds application clocks, the power management limit and its maximum,
-the maximum operating temperature, total framebuffer memory, and the SM active, SM occupancy,
-FP64/FP32/FP16 pipe and NVLink TX/RX profiling fields. The exporter silently skips fields a GPU
-doesn't report (e.g. C2C on B200); the pre-Blackwell NVLink error counters are deliberately left out
-because Blackwell doesn't populate them.
+the maximum operating temperature, total framebuffer memory, the SM active, SM occupancy,
+FP64/FP32/FP16 pipe and NVLink TX/RX profiling fields, and cumulative NVLink TX/RX byte counters.
+The exporter silently skips fields a GPU doesn't report (e.g. C2C on B200); the pre-Blackwell
+NVLink error counters are deliberately left out because Blackwell doesn't populate them.
 
 The ConfigMap's name, set in `gpu-operator.dcgmExporter.config.name`, must be `nscale-dcgm-metrics-`
 followed by the first 8 hex characters of the file's sha256, and rendering fails until it matches:

@@ -108,3 +108,8 @@ DCGM_FI_PROF_PIPE_FP32_ACTIVE,    gauge, Ratio of cycles the fp32 pipes are acti
 DCGM_FI_PROF_PIPE_FP16_ACTIVE,    gauge, Ratio of cycles the fp16 pipes are active.
 DCGM_FI_PROF_NVLINK_TX_BYTES,     gauge, The rate of data transmitted over NVLink in bytes per second.
 DCGM_FI_PROF_NVLINK_RX_BYTES,     gauge, The rate of data received over NVLink in bytes per second.
+
+# Cumulative NVLink 5 byte counters. Unlike the sampled DCGM_FI_PROF_NVLINK_*_BYTES
+# rates above these don't depend on the profiling module.
+DCGM_FI_DEV_NVLINK_TX_BYTES_TOTAL, counter, Total number of bytes transmitted over NVLink across all links.
+DCGM_FI_DEV_NVLINK_RX_BYTES_TOTAL, counter, Total number of bytes received over NVLink across all links.
