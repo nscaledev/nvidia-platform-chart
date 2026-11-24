@@ -19,7 +19,6 @@ DCGM_FI_DEV_MEM_CLOCK, gauge, Memory clock frequency (in MHz).
 DCGM_FI_DEV_MEMORY_TEMP, gauge, Memory temperature (in C).
 DCGM_FI_DEV_GPU_TEMP,    gauge, GPU temperature (in C).
 DCGM_FI_DEV_POWER_USAGE,              gauge, Power draw (in W).
-DCGM_FI_DEV_POWER_MGMT_LIMIT,         gauge, Configured power management limit (in W).
 DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION, counter, Total energy consumption since the driver was last reloaded (in mJ).
 DCGM_FI_DEV_PCIE_REPLAY_COUNTER, counter, Total number of PCIe retries.
 DCGM_FI_DEV_GPU_UTIL,      gauge, GPU utilization (in %).
@@ -37,7 +36,6 @@ DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS,   counter, Number of remapped rows for co
 DCGM_FI_DEV_ROW_REMAP_FAILURE,           gauge,   Whether remapping of rows has failed
 DCGM_FI_DRIVER_VERSION,        label, Driver Version
 DCGM_FI_PROF_GR_ENGINE_ACTIVE,   gauge, Ratio of time the graphics engine is active.
-DCGM_FI_PROF_SM_ACTIVE,          gauge, The ratio of cycles an SM has at least 1 warp assigned.
 DCGM_FI_PROF_PIPE_TENSOR_ACTIVE, gauge, Ratio of cycles the tensor (HMMA) pipe is active.
 DCGM_FI_PROF_DRAM_ACTIVE,        gauge, Ratio of cycles the device memory interface is active sending or receiving data.
 DCGM_FI_PROF_PCIE_TX_BYTES,      gauge, The rate of data transmitted over the PCIe bus - including both protocol headers and data payloads - in bytes per second.
@@ -50,6 +48,8 @@ DCGM_FI_DEV_ECC_SBE_VOL_TOTAL, counter, Total number of single-bit volatile ECC 
 DCGM_FI_DEV_ECC_DBE_VOL_TOTAL, counter, Total number of double-bit volatile ECC errors.
 DCGM_FI_DEV_ECC_SBE_AGG_TOTAL, counter, Total number of single-bit persistent ECC errors.
 DCGM_FI_DEV_ECC_DBE_AGG_TOTAL, counter, Total number of double-bit persistent ECC errors.
+DCGM_FI_DEV_ECC_SBE_VOL_DEV,   counter, Total number of single-bit volatile ECC errors in device memory.
+DCGM_FI_DEV_ECC_DBE_VOL_DEV,   counter, Total number of double-bit volatile ECC errors in device memory.
 
 # Row remapping and inforom
 DCGM_FI_DEV_ROW_REMAP_PENDING,    gauge, Whether remapping of rows is pending (1 means pending and 0 means not pending).
@@ -91,3 +91,25 @@ DCGM_FI_DEV_FABRIC_HEALTH_MASK,    gauge, GPU fabric health status mask.
 # Grace-Blackwell C2C link (GB200 and GB300 only; skipped on B200)
 DCGM_FI_DEV_C2C_LINK_ERROR_TOTAL,        counter, Total number of C2C link CRC errors.
 DCGM_FI_DEV_C2C_LINK_REPLAY_ERROR_TOTAL, counter, Total number of C2C link replay errors.
+
+# Platform additions for utilisation, capacity and configured limits. Hopper and
+# newer GPUs collect every profiling group concurrently, so the DCGM_FI_PROF_
+# fields here don't multiplex with the defaults above; older GPUs would.
+DCGM_FI_DEV_APP_SM_CLOCK,         gauge, SM application clock (in MHz).
+DCGM_FI_DEV_APP_MEM_CLOCK,        gauge, Memory application clock (in MHz).
+DCGM_FI_DEV_POWER_MGMT_LIMIT,     gauge, Configured power management limit (in W).
+DCGM_FI_DEV_POWER_MGMT_LIMIT_MAX, gauge, Maximum power management limit (in W).
+DCGM_FI_DEV_GPU_MAX_OP_TEMP,      gauge, Maximum operating temperature for the GPU (in C).
+DCGM_FI_DEV_FB_TOTAL,             gauge, Total framebuffer memory (in MiB).
+DCGM_FI_PROF_SM_ACTIVE,           gauge, The ratio of cycles an SM has at least 1 warp assigned.
+DCGM_FI_PROF_SM_OCCUPANCY,        gauge, The ratio of number of warps resident on an SM.
+DCGM_FI_PROF_PIPE_FP64_ACTIVE,    gauge, Ratio of cycles the fp64 pipes are active.
+DCGM_FI_PROF_PIPE_FP32_ACTIVE,    gauge, Ratio of cycles the fp32 pipes are active.
+DCGM_FI_PROF_PIPE_FP16_ACTIVE,    gauge, Ratio of cycles the fp16 pipes are active.
+DCGM_FI_PROF_NVLINK_TX_BYTES,     gauge, The rate of data transmitted over NVLink in bytes per second.
+DCGM_FI_PROF_NVLINK_RX_BYTES,     gauge, The rate of data received over NVLink in bytes per second.
+
+# Cumulative NVLink 5 byte counters. Unlike the sampled DCGM_FI_PROF_NVLINK_*_BYTES
+# rates above these don't depend on the profiling module.
+DCGM_FI_DEV_NVLINK_TX_BYTES_TOTAL, counter, Total number of bytes transmitted over NVLink across all links.
+DCGM_FI_DEV_NVLINK_RX_BYTES_TOTAL, counter, Total number of bytes received over NVLink across all links.
