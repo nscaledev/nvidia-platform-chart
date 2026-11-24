@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.0](https://github.com/nscaledev/nvidia-platform-chart/compare/nvidia-platform-0.5.0...nvidia-platform-0.6.0) (2026-11-24)
+
+
+### Features
+
+* **chart:** add cumulative NVLink byte counters ([9d42bf6](https://github.com/nscaledev/nvidia-platform-chart/commit/9d42bf6af6ec27597525cd4d4d7c222b355be062))
+* **chart:** add DCGM utilisation and limit fields ([92d2e22](https://github.com/nscaledev/nvidia-platform-chart/commit/92d2e22619de8008dbc38705116a69f6b0c43e29))
+* **chart:** add DCGM utilisation and limit fields ([384acb7](https://github.com/nscaledev/nvidia-platform-chart/commit/384acb73f7178d0efdb42ee0233954924dbd6c47))
+
 ## [0.5.0](https://github.com/nscaledev/nvidia-platform-chart/compare/nvidia-platform-0.4.0...nvidia-platform-0.5.0) (2026-11-13)
 
 
