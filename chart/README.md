@@ -101,13 +101,16 @@ The chart ships a platform-owned dcgm-exporter field list in
 in both the `ClusterPolicy` and `GPUCluster` stacks. The GPU Operator uses it in place of the
 exporter's default list (`dcp-metrics-included.csv`) rather than merging the two, so the file keeps
 all 26 entries of that default (dcgm-exporter 4.8.4, as bundled by GPU Operator v26.7.2) and adds
-the fields Blackwell fault detection needs: ECC errors, row-remap pending and inforom validity,
-clock-event reasons and slowdown durations, power and thermal violations, slowdown/shutdown
-temperatures and the enforced power limit, the XID error count, DCGM health status, the GPU
-recovery action, NVLink 5 error, recovery and bit-error-rate counters, NVLink fabric status and
-health, and Grace-Blackwell C2C link errors. The exporter silently skips fields a GPU doesn't report
-(e.g. C2C on B200); the pre-Blackwell NVLink error counters are deliberately left out because
-Blackwell doesn't populate them.
+the fields Blackwell fault detection needs: ECC errors including volatile device-memory (HBM)
+counts, row-remap pending and inforom validity, clock-event reasons and slowdown durations, power
+and thermal violations, slowdown/shutdown temperatures and the enforced power limit, the XID error
+count, DCGM health status, the GPU recovery action, NVLink 5 error, recovery and bit-error-rate
+counters, NVLink fabric status and health, and Grace-Blackwell C2C link errors. For utilisation and
+capacity monitoring it also adds application clocks, the power management limit and its maximum,
+the maximum operating temperature, total framebuffer memory, and the SM active, SM occupancy,
+FP64/FP32/FP16 pipe and NVLink TX/RX profiling fields. The exporter silently skips fields a GPU
+doesn't report (e.g. C2C on B200); the pre-Blackwell NVLink error counters are deliberately left out
+because Blackwell doesn't populate them.
 
 The ConfigMap's name, set in `gpu-operator.dcgmExporter.config.name`, must be `nscale-dcgm-metrics-`
 followed by the first 8 hex characters of the file's sha256, and rendering fails until it matches:
@@ -220,7 +223,7 @@ affected. Upstream fixed this after v1.31.0, in
 | gpu-operator.ccManager.enabled | bool | `false` | Deploy the Confidential Computing manager. Pinned to false: the subchart flipped this default to true in v26.3.x without a release note. |
 | gpu-operator.cdi.enabled | bool | `true` | Enable Container Device Interface |
 | gpu-operator.daemonsets.tolerations | list | `[{"operator":"Exists"}]` | Tolerations for GPU Operator DaemonSets |
-| gpu-operator.dcgmExporter.config.name | string | `"nscale-dcgm-metrics-d6de0dba"` | ConfigMap holding the platform-owned dcgm-exporter field list (files/dcgm-metrics.csv), which replaces the exporter's default list. The chart renders this ConfigMap while the name starts with nscale-dcgm-metrics-, and the suffix must be the first 8 hex characters of the file's sha256 (from `sha256sum chart/files/dcgm-metrics.csv`); rendering fails otherwise. Update it with every edit to the file so the exporter pods roll onto the new list. |
+| gpu-operator.dcgmExporter.config.name | string | `"nscale-dcgm-metrics-cc89b656"` | ConfigMap holding the platform-owned dcgm-exporter field list (files/dcgm-metrics.csv), which replaces the exporter's default list. The chart renders this ConfigMap while the name starts with nscale-dcgm-metrics-, and the suffix must be the first 8 hex characters of the file's sha256 (from `sha256sum chart/files/dcgm-metrics.csv`); rendering fails otherwise. Update it with every edit to the file so the exporter pods roll onto the new list. |
 | gpu-operator.driver.enabled | bool | `true` | Enable GPU driver |
 | gpu-operator.driver.rdma.enabled | bool | `false` | Enable GPUDirect RDMA support in the GPU driver |
 | gpu-operator.driver.rdma.useHostMofed | bool | `false` | Use MOFED drivers pre-installed on the host |
